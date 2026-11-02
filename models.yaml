@@ -1,0 +1,38 @@
+models:
+  - id: qwen3-4b
+    kind: llm
+    runtime: llama
+    est_mem_mb: 3500
+    files:
+      - mlabonne_Qwen3-4B-abliterated-Q4_K_M.gguf
+  - id: bonsai-27b
+    kind: llm
+    runtime: llama
+    est_mem_mb: 11000
+    exclusive: true
+    files:
+      - Bonsai-2-27B-Philadelphia-Class-MIXED-PTQ1-Q4_0.gguf
+  - id: flux2-klein
+    kind: image
+    runtime: sd
+    est_mem_mb: 3000
+    files:
+      - bonsai-flux2-klein-ternary-q2_k.gguf
+      - vae.safetensors
+  - id: lance-video
+    kind: video
+    runtime: sd
+    est_mem_mb: 8000
+    status: unsupported
+    reason: unverified in phase 1
+    files:
+      - "Lance_3B_Video-Q5_K_M (1).gguf"
+  - id: slat-3d
+    kind: image3d
+    runtime: sd
+    est_mem_mb: 3000
+    status: unsupported
+    reason: unverified in phase 1
+    files:
+      - slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf
+      - ss_dec_conv3d_16l8_fp16.safetensors
