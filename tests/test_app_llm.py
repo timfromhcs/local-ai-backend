@@ -25,6 +25,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from localai_gateway.app import create_app
 from localai_gateway.config import Settings
+from localai_gateway.duo import DuoConfig
 from localai_gateway.registry import ModelSpec
 from localai_gateway.scheduler import DoesNotFit, Endpoint, ModelUnavailable
 from localai_gateway.supervisor import BackendStartError
@@ -118,10 +119,12 @@ def gw(backend):
         "m": spec("m"),
         "img": spec("img", kind="image"),
         "lance": spec("lance", kind="video", status="unsupported", reason="tensor name 11 is too long"),
+        "duo": ModelSpec(id="duo", kind="llm", files=[], runtime="virtual", est_mem_mb=0),
     }
     sched = FakeScheduler(backend, registry)
     settings = Settings(budget_mb=1000, bin_dir=Path("bin"), model_dir=Path("."))
-    server, port = _serve(create_app(settings, registry, sched))
+    server, port = _serve(create_app(settings, registry, sched,
+                                     duo_config=DuoConfig(planner="m", executor="m", verifier="m", fast="m")))
     yield sched, f"http://127.0.0.1:{port}"
     server.should_exit = True
 
@@ -138,7 +141,7 @@ async def test_models_lists_status(gw):
     async with httpx.AsyncClient() as c:
         data = (await c.get(f"{url}/v1/models")).json()["data"]
     by_id = {d["id"]: d for d in data}
-    assert set(by_id) == {"m", "img", "lance"}
+    assert set(by_id) == {"m", "img", "lance", "duo"} and by_id["duo"]["runtime"] == "virtual"
     assert by_id["m"]["status"] == "ready" and by_id["m"]["loaded"] is True
     assert by_id["lance"]["status"] == "unsupported" and "too long" in by_id["lance"]["reason"]
     assert by_id["lance"]["loaded"] is False
@@ -175,7 +178,7 @@ async def test_unknown_model_404_lists_valid_ids(gw):
         r = await c.post(f"{url}/v1/chat/completions", json={"model": "nope", "messages": []})
     err = r.json()["error"]
     assert r.status_code == 404 and err["code"] == "model_not_found"
-    assert set(err["valid_ids"]) == {"m", "img", "lance"}
+    assert set(err["valid_ids"]) == {"m", "img", "lance", "duo"}
 
 
 async def test_missing_model_field_is_422_or_400(gw):
@@ -241,3 +244,25 @@ async def test_backend_unreachable_returns_503(gw):
     async with httpx.AsyncClient() as c:
         r = await c.post(f"{url}/v1/chat/completions", json={"model": "m", "messages": []})
     assert r.status_code == 503 and r.json()["error"]["code"] == "backend_error" and sched.in_use == 0
+
+
+async def test_duo_virtual_model_runs_plan_execute_verify_and_releases_every_role(gw):
+    sched, url = gw
+    tools = [{"type": "function", "function": {"name": "bash", "description": "x", "parameters": {"type": "object"}}}]
+    async with httpx.AsyncClient(timeout=30) as c:
+        r = await c.post(f"{url}/v1/chat/completions",
+                         json={"model": "duo", "messages": [{"role": "user", "content": "do it"}], "tools": tools})
+    assert r.status_code == 200 and "hello" in r.json()["choices"][0]["message"]["content"]
+    assert r.json()["model"] == "duo"
+    assert sched.released == ["m", "m", "m"] and sched.in_use == 0          # planner, executor, verifier
+
+
+async def test_duo_stream_returns_sse_and_done(gw):
+    _, url = gw
+    lines = []
+    async with httpx.AsyncClient(timeout=30) as c:
+        async with c.stream("POST", f"{url}/v1/chat/completions", json={"model": "duo", "stream": True,
+                            "messages": [{"role": "user", "content": "hi there " * 100}]}) as r:
+            assert r.headers["content-type"].startswith("text/event-stream")
+            lines = [ln async for ln in r.aiter_lines() if ln.startswith("data: ")]
+    assert lines[-1] == "data: [DONE]" and any("hello" in ln for ln in lines)
