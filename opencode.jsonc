@@ -1,0 +1,36 @@
+{
+  // Project-local OpenCode config: local Bonsai-27B as implementer (no cloud).
+  // Port 18090 is outside the supervisor range 18100-18199 and the Jev server port 8080.
+  // LEAN PROMPT: the global config enables 10 MCP servers (github --toolsets=all, playwright, blender, ...);
+  // their tool schemas alone made the first request ~13.6k tokens (~9 min prefill at 26 tok/s).
+  // Disabling them here (project scope only) keeps the built-in file/shell tools and cuts TTFT.
+  "$schema": "https://opencode.ai/config.json",
+  "model": "bonsai/bonsai-27b",
+  "small_model": "bonsai/bonsai-27b",
+  "plugins": [],
+  "providers": {
+    "bonsai": {
+      "package": "@ai-sdk/openai-compatible",
+      "name": "Bonsai-27B (local llama.cpp Vulkan)",
+      "settings": { "baseURL": "http://127.0.0.1:18090/v1", "apiKey": "local" },
+      "models": {
+        "bonsai-27b": {
+          "name": "Bonsai 2 27B (local)",
+          "limit": { "context": 16384, "output": 2048 }
+        }
+      }
+    }
+  },
+  "mcp": {
+    "blender": { "type": "local", "command": ["true"], "enabled": false },
+    "github": { "type": "local", "command": ["true"], "enabled": false },
+    "context7": { "type": "remote", "url": "https://mcp.context7.com/mcp", "enabled": false },
+    "sequential-thinking": { "type": "local", "command": ["true"], "enabled": false },
+    "memory": { "type": "local", "command": ["true"], "enabled": false },
+    "fetch": { "type": "local", "command": ["true"], "enabled": false },
+    "playwright": { "type": "local", "command": ["true"], "enabled": false },
+    "ast-grep": { "type": "local", "command": ["true"], "enabled": false },
+    "better-design": { "type": "remote", "url": "https://better-design.com/api/mcp", "enabled": false },
+    "system-one-jev": { "type": "local", "command": ["true"], "enabled": false }
+  }
+}
