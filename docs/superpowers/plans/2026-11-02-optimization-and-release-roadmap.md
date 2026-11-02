@@ -28,10 +28,10 @@ Hardware fact (measured via WMI): RAM = **4 x 6 GB soldered LPDDR5X, 128-bit, co
 | Lever | Single-stream decode | Prefill | Verdict |
 |---|---|---|---|
 | Faster kernels / flags | ≤ +30 % (bandwidth wall) | already ~50 % of FP32 peak | done; see perf-log |
-| Speculative decoding (draft model, MTP) | on a bandwidth-bound iGPU, verifying k tokens costs ~max(mem time, k/32 s): k≈4-5 is ~free ⇒ up to ~2-3x ⇒ **~12-15 tok/s realistic**, not 50 | – | worth building: pretrained Qwen3.5-0.8B drafter + our distillation; measure verify-cost curve first |
-| Parallel slots (`-np 4..5`) | one weight read serves k streams: **aggregate ~25-30 tok/s** across parallel agents/requests (single request still ~6) | shared | build into gateway for multi-agent loops |
+| Speculative decoding (draft model, MTP) | **MEASURED: verify cost is NOT free on this iGPU** (1 tok 166 ms, 2 tok 242, 3 tok 290, 4 tok 449, 8 tok 775 ms) ⇒ break-even needs ≥46 % acceptance per draft token; best case k=3 ≈ 1.7x, realistic **+10-15 %** (~6.6-6.9 tok/s) | – | low priority; test pretrained Qwen3.5-0.8B drafter with `n-max 2` once, keep only if faster |
+| Parallel slots (`-np`) | **MEASURED aggregate decode: 1 slot 5.5, 2 slots 5.9, 4 slots 7.5, 6 slots 8.5 tok/s** (+36 % / +53 %; the ternary kernels are partly compute-bound) | prefill aggregate 16→25 tok/s | modest; use `-np 2` only if two agents run truly in parallel |
 | MoE-class models (3B active): gpt-oss-20b measured 29 tok/s on a 780M/DDR5-5600 mini PC; Qwen3.6-35B-A3B ~50 on 128 GB Strix Halo | **~25-30 tok/s on this RAM** | – | different model (user asked to keep Bonsai) → optional extra "fast lane" |
-| Sub-1 GB active weights (Qwen3.5-0.8B Q4, Jev 1.5B Q4) | **50-100 tok/s possible** (0.5 GB/token at ~48 GB/s ≈ 95 tok/s) | 300+ | use as System-1 / drafter / router, not as the 27 B replacement |
+| Sub-2 GB models | **MEASURED: Qwen3.5-0.8B Q8 = 71 tok/s decode / 1163 tok/s prompt; Jev Qwen2.5-Coder-1.5B Q4 = 56 / 550; Qwen3-4B Q4 = 22.6 / 201** | see left | **fast lane**: the user's 50-100 tok/s in+out target is met by these; route routing/classification/simple edits/summaries here, keep Bonsai for hard work |
 | Prefill 50+ tok/s on the 27 B | – | needs MMQ tile/dp4a work in `ggml-vulkan` (Strix Halo MMQ port: 2.3x; gfx10 dp4a inner loop alone: negative result) | kernel project, uncertain; only after the cheap wins |
 | Higher RAM clock | BIOS/firmware-locked on this laptop (config 5500 < rated 6400) | – | not reachable from the OS |
 Decision: keep Bonsai for quality, make *effective* speed higher by (1) tiny prompts (done), (2) prefix cache, (3) spec decoding, (4) parallel slots, (5) route simple/System-1 work to a sub-1 GB model in the gateway.

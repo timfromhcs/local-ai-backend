@@ -29,3 +29,13 @@ Conclusion: default Vulkan kernels with int-dot + fp16 are already the best path
 | Global OpenCode (10 MCP servers incl. github --toolsets=all, plugin, AGENTS.md) | ~13,600 tokens | ~7-9 min |
 | Lean project config (`opencode.jsonc`: MCPs/plugins off, project scope) | ~512 tokens | **~16 s** |
 Speed-up ~26x on time-to-first-token without touching the model or the GPU path.
+
+## Speed-path measurements (2026-11-03)
+| Test | Result |
+|---|---|
+| Verify-cost curve, Bonsai (prompt batch of k tokens) | k=1 6.0, 2 8.3, 3 10.4, 4 8.9, 6 9.9, 8 10.3, 12 6.4, 16 11.2 tok/s (=166/242/290/449/604/775/1860/1427 ms per step) |
+| Parallel slots, aggregate decode (`llama-batched-bench`) | B=1 5.53, B=2 5.93, B=4 7.49, B=6 8.46 tok/s; with prefill 8.9/9.7/12.6/13.5 |
+| Qwen3.5-0.8B Q8_0 | pp128 1163 tok/s, **tg64 71.3 tok/s** |
+| Qwen2.5-Coder-1.5B Q4_K_M (Jev) | pp128 550, **tg64 55.7** |
+| Qwen3-4B Q4_K_M | pp128 201, **tg64 22.6** |
+| RAM | 4x6 GB LPDDR5X soldered, 128-bit, configured 5500 MT/s (rated 6400) = 88 GB/s peak; Bonsai decode uses 48 GB/s effective |
