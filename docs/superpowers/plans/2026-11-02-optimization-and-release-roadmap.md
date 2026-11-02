@@ -23,6 +23,19 @@ Sources: PrismML Bonsai-demo community benchmarks (Vulkan PTQ1_0, `-ub 512 -b 20
 | What can still move the needle | (1) fewer prompt tokens (lean OpenCode config: done), (2) prefix checkpoints (TTFT 70 s → 1 s on repeats), (3) int8-dot / DOT2 / fp16 shader paths on `int dot: 1` (test env switches `GGML_VK_DISABLE_INTEGER_DOT_PRODUCT`, `GGML_VK_DISABLE_DOT2`, `GGML_VK_DISABLE_F16`, `GGML_VK_FORCE_MMVQ`), (4) CPU+iGPU split prefill (`-ngl` mix, 8 Zen3 AVX2 cores), (5) newer upstream Vulkan shaders (RMS_NORM fusion +4 %, `GGML_VK_SUBALLOCATION_BLOCK_SIZE`) via a source build **only if** (3)/(4) show headroom, (6) AMD Adrenalin driver update. | research + env list in `ggml-vulkan.dll` |
 Measured so far: `-ub` 64/128/256/512/1024 → 30.1/31.4/**31.7**/30.9/27.0 tok/s ⇒ use `-ub 256`.
 
+## Phase 0B — "50–100 tok/s": what the physics allows on this machine (research + measured hardware facts)
+Hardware fact (measured via WMI): RAM = **4 x 6 GB soldered LPDDR5X, 128-bit, configured 5500 MT/s** (rated 6400) ⇒ **88 GB/s theoretical**. Our decode of 5.9 tok/s x 8.2 GB/token = **48 GB/s effective (55 % of peak)**; realistic ceiling ~62-66 GB/s ⇒ **max ~8 tok/s for this 27 B model, no matter the software** (100 tok/s would need ~820 GB/s, 50 tok/s ~410 GB/s).
+| Lever | Single-stream decode | Prefill | Verdict |
+|---|---|---|---|
+| Faster kernels / flags | ≤ +30 % (bandwidth wall) | already ~50 % of FP32 peak | done; see perf-log |
+| Speculative decoding (draft model, MTP) | on a bandwidth-bound iGPU, verifying k tokens costs ~max(mem time, k/32 s): k≈4-5 is ~free ⇒ up to ~2-3x ⇒ **~12-15 tok/s realistic**, not 50 | – | worth building: pretrained Qwen3.5-0.8B drafter + our distillation; measure verify-cost curve first |
+| Parallel slots (`-np 4..5`) | one weight read serves k streams: **aggregate ~25-30 tok/s** across parallel agents/requests (single request still ~6) | shared | build into gateway for multi-agent loops |
+| MoE-class models (3B active): gpt-oss-20b measured 29 tok/s on a 780M/DDR5-5600 mini PC; Qwen3.6-35B-A3B ~50 on 128 GB Strix Halo | **~25-30 tok/s on this RAM** | – | different model (user asked to keep Bonsai) → optional extra "fast lane" |
+| Sub-1 GB active weights (Qwen3.5-0.8B Q4, Jev 1.5B Q4) | **50-100 tok/s possible** (0.5 GB/token at ~48 GB/s ≈ 95 tok/s) | 300+ | use as System-1 / drafter / router, not as the 27 B replacement |
+| Prefill 50+ tok/s on the 27 B | – | needs MMQ tile/dp4a work in `ggml-vulkan` (Strix Halo MMQ port: 2.3x; gfx10 dp4a inner loop alone: negative result) | kernel project, uncertain; only after the cheap wins |
+| Higher RAM clock | BIOS/firmware-locked on this laptop (config 5500 < rated 6400) | – | not reachable from the OS |
+Decision: keep Bonsai for quality, make *effective* speed higher by (1) tiny prompts (done), (2) prefix cache, (3) spec decoding, (4) parallel slots, (5) route simple/System-1 work to a sub-1 GB model in the gateway.
+
 ## Phase 0 — Runtime optimization (measure, keep only what wins)
 Each item: change one variable, `llama-bench`/server timings, keep if better, log in `docs/perf-log.md`. Acceptance: TTFT(OpenCode, 2nd request) < 20 s; first request < 3 min; tg ≥ 5.8 tok/s.
 1. **Prompt size** (biggest lever): lean project OpenCode config (done: 10 MCPs/plugins off, project scope only). Measure resulting prompt tokens.

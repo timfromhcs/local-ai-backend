@@ -22,3 +22,10 @@ Measured with llama-bench / llama-server timings on this machine, 2026-11-02. Hi
 Hardware ceiling: pp ~32 tok/s x 27B x 2 FLOP = ~1.7 TFLOP/s of ~3.4 TFLOP/s FP32 peak (~50 %).
 
 Conclusion: default Vulkan kernels with int-dot + fp16 are already the best path on this iGPU; remaining TTFT gains come from prompt size and prefix checkpoints, not kernel switches.
+
+## TTFT: OpenCode prompt size (the dominant lever)
+| Config | First-request prompt | Prefill at ~32 tok/s | 
+|---|---|---|
+| Global OpenCode (10 MCP servers incl. github --toolsets=all, plugin, AGENTS.md) | ~13,600 tokens | ~7-9 min |
+| Lean project config (`opencode.jsonc`: MCPs/plugins off, project scope) | ~512 tokens | **~16 s** |
+Speed-up ~26x on time-to-first-token without touching the model or the GPU path.

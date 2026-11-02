@@ -24,4 +24,5 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 markers = ["real: tests that need real model binaries/files (deselect with -m 'not real')"]
