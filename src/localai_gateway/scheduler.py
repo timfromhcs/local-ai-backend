@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Awaitable, Callable
 
 from .config import Settings
 from .registry import ModelSpec
 from .supervisor import free_port
+
+log = logging.getLogger("localai_gateway.scheduler")
 
 
 class DoesNotFit(Exception):
@@ -39,7 +42,7 @@ def default_command(settings: Settings):
         argv = [str(settings.bin_dir / sub / exe), "--host" if spec.runtime == "llama" else "--listen-ip", "127.0.0.1"]
         argv += ["--port" if spec.runtime == "llama" else "--listen-port", str(port)]
         if spec.runtime == "llama":
-            argv += ["--model", str(spec.files[0])]
+            argv += ["--model", str(spec.files[0]), "--slot-save-path", str(settings.cache_dir)]
         argv += list(spec.args)
         return argv, f"http://127.0.0.1:{port}/health"
     return build
@@ -48,11 +51,13 @@ def default_command(settings: Settings):
 class Scheduler:
     def __init__(self, settings: Settings, registry: dict[str, ModelSpec], supervisor: Any,
                  build_command: Callable[[ModelSpec, int], tuple[list[str], str]] | None = None,
-                 port_allocator: Callable[[], int] | None = None, wait_timeout_s: float = 120.0) -> None:
+                 port_allocator: Callable[[], int] | None = None, wait_timeout_s: float = 120.0,
+                 on_started: Callable[[ModelSpec, Endpoint], Awaitable[None]] | None = None) -> None:
         self.settings, self.registry, self.supervisor = settings, registry, supervisor
         self._build = build_command or default_command(settings)
         self._alloc = port_allocator or free_port
         self._timeout = wait_timeout_s
+        self._on_started = on_started
         self._cond = asyncio.Condition()
         self._loaded: dict[str, _Entry] = {}      # insertion order = LRU order (oldest first)
         self._loading: dict[str, asyncio.Future] = {}
@@ -151,6 +156,11 @@ class Scheduler:
                 fut.set_exception(exc)
                 fut.exception()  # mark retrieved: waiters re-raise, avoid "never retrieved" warnings
             raise
+        if self._on_started is not None:  # e.g. restore/precompute the OpenCode prefix BEFORE the model becomes visible
+            try:
+                await self._on_started(spec, Endpoint(f"http://127.0.0.1:{port}"))
+            except Exception:  # a failing warm-up must never prevent the model from serving
+                log.exception("on_started hook failed for %s", spec.id)
         async with self._cond:
             self._loaded[spec.id] = _Entry(mp=mp, port=port, mem=spec.est_mem_mb, exclusive=spec.exclusive)
             self._loading.pop(spec.id, None)

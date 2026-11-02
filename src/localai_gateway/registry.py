@@ -19,6 +19,7 @@ class ModelSpec(BaseModel):
     reason: str | None = None
     experimental: bool = False
     notes: str | None = None
+    warm_prefix: bool = False  # precompute + restore the OpenCode prompt prefix at every server start
     endpoint: str | None = None  # runtime "external": an already running OpenAI-compatible server (never spawned)
 
 

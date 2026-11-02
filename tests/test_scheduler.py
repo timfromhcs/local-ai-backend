@@ -211,3 +211,21 @@ async def test_two_models_stay_resident_together_when_budget_allows():
     await sched.ensure_loaded("small"); await sched.release("small")
     await sched.ensure_loaded("big")
     assert sorted(sched.loaded()) == ["big", "small"] and sup.started == ["big", "small"] and sup.stopped == []
+
+
+async def test_on_started_hook_runs_once_per_start_before_model_is_visible_and_errors_are_swallowed():
+    seen = []
+    state = {}
+
+    async def hook(spec, endpoint):
+        seen.append((spec.id, endpoint.base_url))
+        state["visible_during_hook"] = list(sched.loaded())
+        raise RuntimeError("warm-up exploded")
+
+    sched, sup = make([spec("a", 3000)])
+    sched._on_started = hook
+    ep = await sched.ensure_loaded("a")
+    assert seen == [("a", ep.base_url)] and state["visible_during_hook"] == []   # hidden until warmed
+    assert sched.loaded() == ["a"]                                                 # hook failure did not block serving
+    await sched.ensure_loaded("a")
+    assert len(seen) == 1                                                          # not re-run for a resident model

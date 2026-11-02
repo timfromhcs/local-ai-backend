@@ -15,6 +15,7 @@ def test_loads_models_yaml():
     assert reg["bonsai-27b"].exclusive is False          # duo keeps planner and executor resident together
     assert reg["duo"].runtime == "virtual" and reg["jev-1.5b"].runtime == "external"
     assert reg["jev-1.5b"].endpoint == "http://127.0.0.1:8080"
+    assert reg["qwen3-4b"].warm_prefix is True and reg["bonsai-27b"].warm_prefix is False
     assert "--jinja" in reg["qwen3-4b"].args and "--jinja" in reg["bonsai-27b"].args
     assert reg["qwen3-4b"].runtime == "llama"
     assert reg["flux2-klein"].runtime == "sd"

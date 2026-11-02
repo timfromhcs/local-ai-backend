@@ -12,7 +12,8 @@ class Settings(BaseModel):
     budget_mb: int
     bin_dir: Path
     model_dir: Path
-    port: int = 8080
+    port: int = 8090  # 8080 belongs to the Jev server
+    cache_dir: Path = PROJECT_ROOT / "cache" / "slots"  # SSD: llama-server slot states (precomputed OpenCode prefix)
 
     @classmethod
     def default(cls) -> "Settings":

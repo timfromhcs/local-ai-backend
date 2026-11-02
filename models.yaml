@@ -4,6 +4,7 @@ models:
     kind: llm
     runtime: llama
     est_mem_mb: 3600
+    warm_prefix: true
     args: ["-c", "16384", "-ngl", "99", "-fa", "on", "-ctk", "q8_0", "-ctv", "q8_0", "--no-warmup", "-np", "1", "-t", "8", "-ub", "256", "--jinja", "--reasoning-budget", "0"]
     notes: "Executor (abliterated Qwen3-4B Q4_K_M, ~22.6 tok/s decode measured). --jinja is required for tool calls; keep KV at q8_0 (q4_0 degrades tool calling)."
     files:
