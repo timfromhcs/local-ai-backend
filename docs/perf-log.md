@@ -39,3 +39,13 @@ Speed-up ~26x on time-to-first-token without touching the model or the GPU path.
 | Qwen2.5-Coder-1.5B Q4_K_M (Jev) | pp128 550, **tg64 55.7** |
 | Qwen3-4B Q4_K_M | pp128 201, **tg64 22.6** |
 | RAM | 4x6 GB LPDDR5X soldered, 128-bit, configured 5500 MT/s (rated 6400) = 88 GB/s peak; Bonsai decode uses 48 GB/s effective |
+
+## Correction + OpenCode prompt precompute (2026-11-03)
+**Correction:** the earlier "TTFT 26x better" claim was wrong. The 512-token request was only OpenCode's *title* request; the real agent request is ~16.2k tokens and was unchanged by disabling MCP servers. Cause measured with a mock server: system prompt 51.8k chars of which `<available_skills>` = 38.0k chars (73 %), plus 13 tool schemas = 17.4k chars. Skills stay enabled (user decision); the prefix is precomputed instead.
+| Case (Qwen3-4B Q4_K_M, 16.2k-token OpenCode prompt) | Time | Cache |
+|---|---|---|
+| No cache (first request, prefill ~4k tok/s... measured) | 70-190 s | 0 |
+| Precomputed prefix in memory (second request) | **5.0 s total, 0.8 s prompt phase** | cache_n 16255 / new 10 |
+| Fresh gateway start: load 4B + restore slot from SSD (1.2 GB) + request | **8.5 s total**, restore 0.6 s | cache_n 16235 / new 30 |
+Design: `<env>` block moved to the first user message (chat templates render tool schemas right after the system text, so anything volatile in the system prompt kills the cached tool section); stable boundary = common prefix of two renderings; slot state saved/restored via `--slot-save-path` on SSD (`cache/slots/*.bin`).
+Open check: first-ever cold compute showed cache_n 12141 on the first request (second request fine); re-verify on a clean cache.
