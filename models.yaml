@@ -2,7 +2,7 @@ models:
   - id: qwen3-4b
     kind: llm
     runtime: llama
-    est_mem_mb: 3500
+    est_mem_mb: 2500
     files:
       - mlabonne_Qwen3-4B-abliterated-Q4_K_M.gguf
   - id: bonsai-27b
@@ -15,16 +15,17 @@ models:
   - id: flux2-klein
     kind: image
     runtime: sd
-    est_mem_mb: 3000
+    est_mem_mb: 4200
     files:
       - bonsai-flux2-klein-ternary-q2_k.gguf
-      - vae.safetensors
+      - diffusion_pytorch_model.safetensors
+      - mlabonne_Qwen3-4B-abliterated-Q4_K_M.gguf
   - id: lance-video
     kind: video
     runtime: sd
     est_mem_mb: 8000
     status: unsupported
-    reason: unverified in phase 1
+    reason: "llama-server/sd-server cannot load: gguf_init_from_reader: tensor name 11 is too long: 69 >= 64 (sd: get sd version from file failed)"
     files:
       - "Lance_3B_Video-Q5_K_M (1).gguf"
   - id: slat-3d
@@ -32,7 +33,7 @@ models:
     runtime: sd
     est_mem_mb: 3000
     status: unsupported
-    reason: unverified in phase 1
+    reason: "llama-server: unknown model architecture: 'flux' (sd-server: get sd version from file failed)"
     files:
       - slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf
       - ss_dec_conv3d_16l8_fp16.safetensors

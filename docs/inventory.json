@@ -1,0 +1,503 @@
+{
+  "models": {
+    "qwen3-4b": {
+      "model_id": "qwen3-4b",
+      "ok": true,
+      "load_s": 4.91,
+      "peak_rss_mb": 2403.6,
+      "metric": 21.86,
+      "metric_unit": "tokens/s",
+      "error": null,
+      "attempts": [
+        {
+          "model_id": "qwen3-4b",
+          "ok": true,
+          "load_s": 4.91,
+          "peak_rss_mb": 2403.6,
+          "metric": 21.86,
+          "error": null,
+          "extra": {
+            "ngl": 99,
+            "runtime": "llama-server",
+            "unit": "tokens/s",
+            "log": "C:\\Users\\hcsme\\AppData\\Local\\Temp\\smoke_qwen3-4b_ngl99_1793657370.log",
+            "tps_source": "timings",
+            "reply": "",
+            "request_s": 2.51,
+            "peak_rss_mb": 2403.6
+          }
+        }
+      ]
+    },
+    "flux2-klein": {
+      "model_id": "flux2-klein",
+      "ok": true,
+      "load_s": 1.53,
+      "peak_rss_mb": 4115.1,
+      "metric": 56.66,
+      "metric_unit": "gen_seconds",
+      "error": null,
+      "attempts": [
+        {
+          "model_id": "flux2-klein",
+          "ok": false,
+          "load_s": 1.51,
+          "peak_rss_mb": 172.6,
+          "metric": null,
+          "error": "[E] new_sd_ctx_t failed --- main.cpp:105",
+          "extra": {
+            "runtime": "sd-server",
+            "variant": "diffusion+vae",
+            "args": [
+              "--diffusion-model",
+              "C:\\LocalAIBACKEND\\bonsai-flux2-klein-ternary-q2_k.gguf",
+              "--vae",
+              "C:\\LocalAIBACKEND\\vae.safetensors",
+              "--offload-to-cpu"
+            ],
+            "unit": "gen_seconds",
+            "log": "C:\\Users\\hcsme\\AppData\\Local\\Temp\\smoke_flux2-klein_diffusion+vae_1793657419.log",
+            "failure": "exited",
+            "tail": "[E] VAE tensor 'first_stage_model.encoder.mid.block_2.norm1.bias' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.encoder.mid.block_2.norm1.weight' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.encoder.mid.block_2.norm2.bias' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.encoder.mid.block_2.norm2.weight' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.encoder.norm_out.bias' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.encoder.norm_out.weight' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.post_quant_conv.bias' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.post_quant_conv.weight' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.quant_conv.bias' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.quant_conv.weight' not in model metadata --- model_manager.cpp:765\n[E] model metadata validation failed --- diffusion_engine.cpp:1366\n[E] new_sd_ctx_t failed --- main.cpp:105",
+            "peak_rss_mb": 172.6
+          }
+        },
+        {
+          "model_id": "flux2-klein",
+          "ok": false,
+          "load_s": 1.51,
+          "peak_rss_mb": 174.9,
+          "metric": null,
+          "error": "[E] new_sd_ctx_t failed --- main.cpp:105",
+          "extra": {
+            "runtime": "sd-server",
+            "variant": "EXPERIMENT diffusion+vae+qwen3-4b-as-llm",
+            "args": [
+              "--diffusion-model",
+              "C:\\LocalAIBACKEND\\bonsai-flux2-klein-ternary-q2_k.gguf",
+              "--vae",
+              "C:\\LocalAIBACKEND\\vae.safetensors",
+              "--llm",
+              "C:\\LocalAIBACKEND\\mlabonne_Qwen3-4B-abliterated-Q4_K_M.gguf",
+              "--offload-to-cpu"
+            ],
+            "unit": "gen_seconds",
+            "log": "C:\\Users\\hcsme\\AppData\\Local\\Temp\\smoke_flux2-klein_EXPERIMENT_1793657421.log",
+            "failure": "exited",
+            "tail": "[E] VAE tensor 'first_stage_model.encoder.mid.block_2.norm1.bias' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.encoder.mid.block_2.norm1.weight' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.encoder.mid.block_2.norm2.bias' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.encoder.mid.block_2.norm2.weight' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.encoder.norm_out.bias' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.encoder.norm_out.weight' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.post_quant_conv.bias' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.post_quant_conv.weight' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.quant_conv.bias' not in model metadata --- model_manager.cpp:765\n[E] VAE tensor 'first_stage_model.quant_conv.weight' not in model metadata --- model_manager.cpp:765\n[E] model metadata validation failed --- diffusion_engine.cpp:1366\n[E] new_sd_ctx_t failed --- main.cpp:105",
+            "peak_rss_mb": 174.9
+          }
+        },
+        {
+          "model_id": "flux2-klein",
+          "ok": true,
+          "load_s": 1.53,
+          "peak_rss_mb": 4115.1,
+          "metric": 56.66,
+          "error": null,
+          "extra": {
+            "runtime": "sd-server",
+            "variant": "EXPERIMENT diffusers-vae+qwen3-4b-as-llm",
+            "args": [
+              "--diffusion-model",
+              "C:\\LocalAIBACKEND\\bonsai-flux2-klein-ternary-q2_k.gguf",
+              "--vae",
+              "C:\\LocalAIBACKEND\\diffusion_pytorch_model.safetensors",
+              "--llm",
+              "C:\\LocalAIBACKEND\\mlabonne_Qwen3-4B-abliterated-Q4_K_M.gguf",
+              "--offload-to-cpu"
+            ],
+            "unit": "gen_seconds",
+            "log": "C:\\Users\\hcsme\\AppData\\Local\\Temp\\smoke_flux2-klein_EXPERIMENT_1793657422.log",
+            "image_b64_len": 242960,
+            "peak_rss_mb": 4115.1
+          }
+        }
+      ]
+    },
+    "slat-3d": {
+      "model_id": "slat-3d",
+      "ok": false,
+      "load_s": 2.73,
+      "peak_rss_mb": 9.6,
+      "metric": null,
+      "metric_unit": null,
+      "error": "0.00.107.040 E llama_model_load: error loading model: unknown model architecture: 'flux'",
+      "attempts": [
+        {
+          "model_id": "slat-3d",
+          "ok": false,
+          "load_s": 2.73,
+          "peak_rss_mb": 9.5,
+          "metric": null,
+          "error": "0.00.107.040 E llama_model_load: error loading model: unknown model architecture: 'flux'",
+          "extra": {
+            "ngl": 0,
+            "runtime": "llama-server",
+            "unit": "tokens/s",
+            "log": "C:\\Users\\hcsme\\AppData\\Local\\Temp\\smoke_slat-3d_ngl0_1793657521.log",
+            "failure": "exited",
+            "tail": "0.00.095.128 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)\n0.00.095.457 W srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)\n0.00.101.283 I srv    load_model: loading model 'C:\\LocalAIBACKEND\\slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf'\n0.00.107.040 E llama_model_load: error loading model: unknown model architecture: 'flux'\n0.00.107.047 E llama_model_load_from_file_impl: failed to load model\n0.00.107.081 E common_fit_params: encountered an error while trying to fit params to free device memory: failed to load model\n0.00.112.187 E llama_model_load: error loading model: unknown model architecture: 'flux'\n0.00.112.195 E llama_model_load_from_file_impl: failed to load model\n0.00.112.202 E cmn  common_init_: failed to load model 'C:\\LocalAIBACKEND\\slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf'\n0.00.112.204 E srv    load_model: failed to load model, 'C:\\LocalAIBACKEND\\slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf'\n0.00.112.213 I srv   operator (): operator (): cleaning up before exit...\n0.00.113.150 E srv  server_run_i: exiting due to model loading error",
+            "peak_rss_mb": 9.5,
+            "ngl99_error": "0.00.108.089 E llama_model_load: error loading model: unknown model architecture: 'flux'",
+            "ngl99_tail": "0.00.098.027 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)\n0.00.098.365 W srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)\n0.00.101.864 I srv    load_model: loading model 'C:\\LocalAIBACKEND\\slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf'\n0.00.108.089 E llama_model_load: error loading model: unknown model architecture: 'flux'\n0.00.108.097 E llama_model_load_from_file_impl: failed to load model\n0.00.108.138 E common_fit_params: encountered an error while trying to fit params to free device memory: failed to load model\n0.00.114.069 E llama_model_load: error loading model: unknown model architecture: 'flux'\n0.00.114.071 E llama_model_load_from_file_impl: failed to load model\n0.00.114.077 E cmn  common_init_: failed to load model 'C:\\LocalAIBACKEND\\slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf'\n0.00.114.079 E srv    load_model: failed to load model, 'C:\\LocalAIBACKEND\\slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf'\n0.00.114.087 I srv   operator (): operator (): cleaning up before exit...\n0.00.115.118 E srv  server_run_i: exiting due to model loading error"
+          }
+        },
+        {
+          "model_id": "slat-3d",
+          "ok": false,
+          "load_s": 1.51,
+          "peak_rss_mb": 9.6,
+          "metric": null,
+          "error": "[E] get sd version from file failed: '' --- diffusion_engine.cpp:972",
+          "extra": {
+            "runtime": "sd-server",
+            "variant": "diffusion-model",
+            "args": [
+              "--diffusion-model",
+              "C:\\LocalAIBACKEND\\slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf"
+            ],
+            "unit": "gen_seconds",
+            "log": "C:\\Users\\hcsme\\AppData\\Local\\Temp\\smoke_slat-3d_diffusion-model_1793657524.log",
+            "failure": "exited",
+            "tail": "ggml_vulkan: 0 = AMD Radeon(TM) Graphics (AMD proprietary driver) | uma: 1 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 32 | shared memory: 32768 | int dot: 1 | matrix cores: none\nload_backend: loaded Vulkan backend from C:\\LocalAIBACKEND\\bin\\sd\\ggml-vulkan.dll\nload_backend: loaded CPU backend from C:\\LocalAIBACKEND\\bin\\sd\\ggml-cpu-haswell.dll\n[V] System Info:\n   SSE3 = 1 |    SSSE3 = 1 |    AVX = 1 |    AVX2 = 1 |    F16C = 1 |    FMA = 1 |    BMI2 = 1 |    OPENMP = 1 |    REPACK = 1 |  --- main.cpp:91\n[V] using 8 threads for model loading --- model_loader.cpp:194\n[I] loading diffusion model from 'C:\\LocalAIBACKEND\\slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf' --- diffusion_engine.cpp:692\n[I] load C:\\LocalAIBACKEND\\slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf using gguf format --- model_loader.cpp:220\n[V] init from 'C:\\LocalAIBACKEND\\slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf' --- model_loader.cpp:266\n[V] GGUF v3, tensor_count=700, metadata_kv_count=3 --- gguf_reader_ext.h:225\n[E] get sd version from file failed: '' --- diffusion_engine.cpp:972\n[E] new_sd_ctx_t failed --- main.cpp:105",
+            "peak_rss_mb": 9.6
+          }
+        },
+        {
+          "model_id": "slat-3d",
+          "ok": false,
+          "load_s": 1.5,
+          "peak_rss_mb": 8.8,
+          "metric": null,
+          "error": "[E] get sd version from file failed: 'C:\\LocalAIBACKEND\\slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf' --- diffusion_engine.cpp:972",
+          "extra": {
+            "runtime": "sd-server",
+            "variant": "model",
+            "args": [
+              "-m",
+              "C:\\LocalAIBACKEND\\slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf"
+            ],
+            "unit": "gen_seconds",
+            "log": "C:\\Users\\hcsme\\AppData\\Local\\Temp\\smoke_slat-3d_model_1793657525.log",
+            "failure": "exited",
+            "tail": "ggml_vulkan: 0 = AMD Radeon(TM) Graphics (AMD proprietary driver) | uma: 1 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 32 | shared memory: 32768 | int dot: 1 | matrix cores: none\nload_backend: loaded Vulkan backend from C:\\LocalAIBACKEND\\bin\\sd\\ggml-vulkan.dll\nload_backend: loaded CPU backend from C:\\LocalAIBACKEND\\bin\\sd\\ggml-cpu-haswell.dll\n[V] System Info:\n   SSE3 = 1 |    SSSE3 = 1 |    AVX = 1 |    AVX2 = 1 |    F16C = 1 |    FMA = 1 |    BMI2 = 1 |    OPENMP = 1 |    REPACK = 1 |  --- main.cpp:91\n[V] using 8 threads for model loading --- model_loader.cpp:194\n[I] loading model from 'C:\\LocalAIBACKEND\\slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf' --- diffusion_engine.cpp:685\n[I] load C:\\LocalAIBACKEND\\slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf using gguf format --- model_loader.cpp:220\n[V] init from 'C:\\LocalAIBACKEND\\slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf' --- model_loader.cpp:266\n[V] GGUF v3, tensor_count=700, metadata_kv_count=3 --- gguf_reader_ext.h:225\n[E] get sd version from file failed: 'C:\\LocalAIBACKEND\\slat_flow_imgshape2tex_dit_1_3B_1024_bf16_Q4_K_M.gguf' --- diffusion_engine.cpp:972\n[E] new_sd_ctx_t failed --- main.cpp:105",
+            "peak_rss_mb": 8.8
+          }
+        }
+      ]
+    },
+    "lance-video": {
+      "model_id": "lance-video",
+      "ok": false,
+      "load_s": 2.74,
+      "peak_rss_mb": 9.8,
+      "metric": null,
+      "metric_unit": null,
+      "error": "0.00.102.556 E gguf_init_from_reader: tensor name 11 is too long: 69 >= 64",
+      "attempts": [
+        {
+          "model_id": "lance-video",
+          "ok": false,
+          "load_s": 2.74,
+          "peak_rss_mb": 9.8,
+          "metric": null,
+          "error": "0.00.102.556 E gguf_init_from_reader: tensor name 11 is too long: 69 >= 64",
+          "extra": {
+            "ngl": 0,
+            "runtime": "llama-server",
+            "unit": "tokens/s",
+            "log": "C:\\Users\\hcsme\\AppData\\Local\\Temp\\smoke_lance-video_ngl0_1793657552.log",
+            "failure": "exited",
+            "tail": "0.00.102.567 E gguf_init_from_reader: failed to read tensor info\n0.00.102.714 E llama_model_load: error loading model: llama_model_loader: failed to load model from C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf\n0.00.102.723 E llama_model_load_from_file_impl: failed to load model\n0.00.102.780 E common_fit_params: encountered an error while trying to fit params to free device memory: failed to load model\n0.00.102.974 E gguf_init_from_reader: tensor name 11 is too long: 69 >= 64\n0.00.102.975 E gguf_init_from_reader: failed to read tensor info\n0.00.103.026 E llama_model_load: error loading model: llama_model_loader: failed to load model from C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf\n0.00.103.028 E llama_model_load_from_file_impl: failed to load model\n0.00.103.035 E cmn  common_init_: failed to load model 'C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf'\n0.00.103.037 E srv    load_model: failed to load model, 'C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf'\n0.00.103.046 I srv   operator (): operator (): cleaning up before exit...\n0.00.103.790 E srv  server_run_i: exiting due to model loading error",
+            "peak_rss_mb": 9.8,
+            "ngl99_error": "0.00.101.617 E gguf_init_from_reader: tensor name 11 is too long: 69 >= 64",
+            "ngl99_tail": "0.00.101.627 E gguf_init_from_reader: failed to read tensor info\n0.00.101.778 E llama_model_load: error loading model: llama_model_loader: failed to load model from C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf\n0.00.101.787 E llama_model_load_from_file_impl: failed to load model\n0.00.101.843 E common_fit_params: encountered an error while trying to fit params to free device memory: failed to load model\n0.00.102.009 E gguf_init_from_reader: tensor name 11 is too long: 69 >= 64\n0.00.102.011 E gguf_init_from_reader: failed to read tensor info\n0.00.102.062 E llama_model_load: error loading model: llama_model_loader: failed to load model from C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf\n0.00.102.064 E llama_model_load_from_file_impl: failed to load model\n0.00.102.070 E cmn  common_init_: failed to load model 'C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf'\n0.00.102.072 E srv    load_model: failed to load model, 'C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf'\n0.00.102.080 I srv   operator (): operator (): cleaning up before exit...\n0.00.102.766 E srv  server_run_i: exiting due to model loading error"
+          }
+        },
+        {
+          "model_id": "lance-video",
+          "ok": false,
+          "load_s": 1.5,
+          "peak_rss_mb": 9.0,
+          "metric": null,
+          "error": "[E] get sd version from file failed: 'C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf' --- diffusion_engine.cpp:972",
+          "extra": {
+            "runtime": "sd-server",
+            "variant": "model",
+            "args": [
+              "-m",
+              "C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf"
+            ],
+            "unit": "gen_seconds",
+            "log": "C:\\Users\\hcsme\\AppData\\Local\\Temp\\smoke_lance-video_model_1793657555.log",
+            "failure": "exited",
+            "tail": "ggml_vulkan: 0 = AMD Radeon(TM) Graphics (AMD proprietary driver) | uma: 1 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 32 | shared memory: 32768 | int dot: 1 | matrix cores: none\nload_backend: loaded Vulkan backend from C:\\LocalAIBACKEND\\bin\\sd\\ggml-vulkan.dll\nload_backend: loaded CPU backend from C:\\LocalAIBACKEND\\bin\\sd\\ggml-cpu-haswell.dll\n[V] System Info:\n   SSE3 = 1 |    SSSE3 = 1 |    AVX = 1 |    AVX2 = 1 |    F16C = 1 |    FMA = 1 |    BMI2 = 1 |    OPENMP = 1 |    REPACK = 1 |  --- main.cpp:91\n[V] using 8 threads for model loading --- model_loader.cpp:194\n[I] loading model from 'C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf' --- diffusion_engine.cpp:685\n[I] load C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf using gguf format --- model_loader.cpp:220\n[V] init from 'C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf' --- model_loader.cpp:266\n[V] GGUF v3, tensor_count=1021, metadata_kv_count=3 --- gguf_reader_ext.h:225\n[E] get sd version from file failed: 'C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf' --- diffusion_engine.cpp:972\n[E] new_sd_ctx_t failed --- main.cpp:105",
+            "peak_rss_mb": 9.0
+          }
+        },
+        {
+          "model_id": "lance-video",
+          "ok": false,
+          "load_s": 1.51,
+          "peak_rss_mb": 9.2,
+          "metric": null,
+          "error": "[E] get sd version from file failed: '' --- diffusion_engine.cpp:972",
+          "extra": {
+            "runtime": "sd-server",
+            "variant": "diffusion-model",
+            "args": [
+              "--diffusion-model",
+              "C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf"
+            ],
+            "unit": "gen_seconds",
+            "log": "C:\\Users\\hcsme\\AppData\\Local\\Temp\\smoke_lance-video_diffusion-model_1793657556.log",
+            "failure": "exited",
+            "tail": "ggml_vulkan: 0 = AMD Radeon(TM) Graphics (AMD proprietary driver) | uma: 1 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 32 | shared memory: 32768 | int dot: 1 | matrix cores: none\nload_backend: loaded Vulkan backend from C:\\LocalAIBACKEND\\bin\\sd\\ggml-vulkan.dll\nload_backend: loaded CPU backend from C:\\LocalAIBACKEND\\bin\\sd\\ggml-cpu-haswell.dll\n[V] System Info:\n   SSE3 = 1 |    SSSE3 = 1 |    AVX = 1 |    AVX2 = 1 |    F16C = 1 |    FMA = 1 |    BMI2 = 1 |    OPENMP = 1 |    REPACK = 1 |  --- main.cpp:91\n[V] using 8 threads for model loading --- model_loader.cpp:194\n[I] loading diffusion model from 'C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf' --- diffusion_engine.cpp:692\n[I] load C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf using gguf format --- model_loader.cpp:220\n[V] init from 'C:\\LocalAIBACKEND\\Lance_3B_Video-Q5_K_M (1).gguf' --- model_loader.cpp:266\n[V] GGUF v3, tensor_count=1021, metadata_kv_count=3 --- gguf_reader_ext.h:225\n[E] get sd version from file failed: '' --- diffusion_engine.cpp:972\n[E] new_sd_ctx_t failed --- main.cpp:105",
+            "peak_rss_mb": 9.2
+          }
+        }
+      ]
+    },
+    "bonsai-27b": {
+      "model_id": "bonsai-27b",
+      "ok": false,
+      "load_s": null,
+      "peak_rss_mb": null,
+      "metric": null,
+      "metric_unit": null,
+      "error": "insufficient free RAM at probe time: available 9098 MB < needed 9661 MB (model file 8162 MB + 1500)",
+      "attempts": []
+    }
+  },
+  "onnx": [
+    {
+      "file": "dacvae_decoder.onnx",
+      "size": 1103715,
+      "sha256": "be13c0842945293ca0f5d77514783dc126007c5b490f00444c1c29f44f7035df",
+      "error": "[ONNXRuntimeError] : 1 : FAIL : External data path validation failed for initializer: decoder.model.0.bias. Error: tensorprotoutils.cc:461 onnxruntime::utils::ValidateExternalDataPathFromDir External data path does not exist: \"C:\\\\LocalAIBACKEND\\\\dacvae_decoder.onnx.data\"",
+      "inputs": [
+        {
+          "name": "latent_features",
+          "shape": [
+            "s51",
+            128,
+            "25"
+          ],
+          "dtype": "FLOAT"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "waveform",
+          "shape": [
+            1,
+            1,
+            48000
+          ],
+          "dtype": "FLOAT"
+        }
+      ],
+      "loadable": false
+    },
+    {
+      "file": "dit_single_step.onnx",
+      "size": 5698535,
+      "sha256": "85f1260ac7773fd3efa231ace4ebdf063f57c4a52719b3db09f1871af5a5f59b",
+      "error": "[ONNXRuntimeError] : 1 : FAIL : External data path validation failed for initializer: transformer.layers.0.scale_shift_table. Error: tensorprotoutils.cc:461 onnxruntime::utils::ValidateExternalDataPathFromDir External data path does not exist: \"C:\\\\LocalAIBACKEND\\\\dit_single_step.onnx.data\"",
+      "inputs": [
+        {
+          "name": "noisy_audio",
+          "shape": [
+            "s18",
+            "s35",
+            256
+          ],
+          "dtype": "FLOAT16"
+        },
+        {
+          "name": "time",
+          "shape": [
+            "s18"
+          ],
+          "dtype": "FLOAT16"
+        },
+        {
+          "name": "audio_features",
+          "shape": [
+            "s18",
+            "s35",
+            256
+          ],
+          "dtype": "FLOAT16"
+        },
+        {
+          "name": "text_features",
+          "shape": [
+            "s18",
+            "s57",
+            768
+          ],
+          "dtype": "FLOAT16"
+        },
+        {
+          "name": "text_mask",
+          "shape": [
+            "s18",
+            "s57"
+          ],
+          "dtype": "BOOL"
+        },
+        {
+          "name": "masked_video_features",
+          "shape": [
+            "s18",
+            1024,
+            "s35"
+          ],
+          "dtype": "FLOAT16"
+        },
+        {
+          "name": "anchor_ids",
+          "shape": [
+            "s33",
+            "s72"
+          ],
+          "dtype": "INT64"
+        },
+        {
+          "name": "anchor_alignment",
+          "shape": [
+            "s18",
+            "s35"
+          ],
+          "dtype": "INT64"
+        },
+        {
+          "name": "audio_pad_mask",
+          "shape": [
+            "s18",
+            "s100"
+          ],
+          "dtype": "BOOL"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "velocity",
+          "shape": [
+            1,
+            "-s35 + CeilToInt((IntTrueDiv(CeilToInt((IntTrueDiv(s35 - 1, 1)) + 1.0) - 1, 1)) + 1.0) + ((s35//s18))",
+            256
+          ],
+          "dtype": "FLOAT16"
+        }
+      ],
+      "loadable": false
+    },
+    {
+      "file": "t5_encoder.onnx",
+      "size": 1110394,
+      "sha256": "1776c8bce2eb4dbcd297bde499ea780253bc09677cfa8e18baef383859437e1c",
+      "error": "[ONNXRuntimeError] : 1 : FAIL : External data path validation failed for initializer: model.encoder.embed_tokens.weight. Error: tensorprotoutils.cc:461 onnxruntime::utils::ValidateExternalDataPathFromDir External data path does not exist: \"C:\\\\LocalAIBACKEND\\\\t5_encoder.onnx.data\"",
+      "inputs": [
+        {
+          "name": "input_ids",
+          "shape": [
+            "s43",
+            "s70"
+          ],
+          "dtype": "INT64"
+        },
+        {
+          "name": "attention_mask",
+          "shape": [
+            "s43",
+            "s53"
+          ],
+          "dtype": "INT64"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "hidden_states",
+          "shape": [
+            1,
+            "s70",
+            768
+          ],
+          "dtype": "FLOAT"
+        }
+      ],
+      "loadable": false
+    },
+    {
+      "file": "vision_encoder (1).onnx",
+      "size": 3098779,
+      "sha256": "ea8535c5bc55fbcc62fba78774e34c4ba59dc721275194efda73b26aee2eead9",
+      "error": "[ONNXRuntimeError] : 1 : FAIL : External data path validation failed for initializer: model.visual.positional_embedding. Error: tensorprotoutils.cc:461 onnxruntime::utils::ValidateExternalDataPathFromDir External data path does not exist: \"C:\\\\LocalAIBACKEND\\\\vision_encoder.onnx.data\"",
+      "inputs": [
+        {
+          "name": "video_frames",
+          "shape": [
+            "s77",
+            3,
+            336,
+            336
+          ],
+          "dtype": "FLOAT"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "vision_features",
+          "shape": [
+            1,
+            1024
+          ],
+          "dtype": "FLOAT"
+        }
+      ],
+      "loadable": false
+    },
+    {
+      "file": "vision_encoder.onnx",
+      "size": 3098779,
+      "sha256": "ea8535c5bc55fbcc62fba78774e34c4ba59dc721275194efda73b26aee2eead9",
+      "error": "[ONNXRuntimeError] : 1 : FAIL : External data path validation failed for initializer: model.visual.positional_embedding. Error: tensorprotoutils.cc:461 onnxruntime::utils::ValidateExternalDataPathFromDir External data path does not exist: \"C:\\\\LocalAIBACKEND\\\\vision_encoder.onnx.data\"",
+      "inputs": [
+        {
+          "name": "video_frames",
+          "shape": [
+            "s77",
+            3,
+            336,
+            336
+          ],
+          "dtype": "FLOAT"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "vision_features",
+          "shape": [
+            1,
+            1024
+          ],
+          "dtype": "FLOAT"
+        }
+      ],
+      "loadable": false
+    }
+  ],
+  "runtimes": {
+    "llama-server": "build 12128 (d7b289683)",
+    "sd-server": "commit 3be2378"
+  },
+  "onnx_duplicates": [
+    [
+      "vision_encoder (1).onnx",
+      "vision_encoder.onnx"
+    ]
+  ]
+}

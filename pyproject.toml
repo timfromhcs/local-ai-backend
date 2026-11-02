@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio"]
+dev = ["pytest", "pytest-asyncio", "onnxruntime", "onnx"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
