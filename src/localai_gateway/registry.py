@@ -17,6 +17,8 @@ class ModelSpec(BaseModel):
     args: list[str] = Field(default_factory=list)
     status: Literal["ready", "unavailable", "unsupported"] = "ready"
     reason: str | None = None
+    experimental: bool = False
+    notes: str | None = None
 
 
 def load_registry(path: Path, model_dir: Path) -> dict[str, ModelSpec]:

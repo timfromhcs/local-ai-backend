@@ -8,7 +8,7 @@ models:
   - id: bonsai-27b
     kind: llm
     runtime: llama
-    est_mem_mb: 11000
+    est_mem_mb: 9000
     exclusive: true
     files:
       - Bonsai-2-27B-Philadelphia-Class-MIXED-PTQ1-Q4_0.gguf
@@ -16,6 +16,8 @@ models:
     kind: image
     runtime: sd
     est_mem_mb: 4200
+    experimental: true
+    notes: "Works only with non-spec files: diffusers VAE (diffusion_pytorch_model.safetensors) + Qwen3-4B gguf as --llm; vae.safetensors alone fails. Output not yet PNG-validated."
     files:
       - bonsai-flux2-klein-ternary-q2_k.gguf
       - diffusion_pytorch_model.safetensors

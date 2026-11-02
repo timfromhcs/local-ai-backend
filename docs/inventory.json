@@ -113,7 +113,9 @@
             "peak_rss_mb": 4115.1
           }
         }
-      ]
+      ],
+      "experimental": true,
+      "output_validated": false
     },
     "slat-3d": {
       "model_id": "slat-3d",
@@ -261,12 +263,17 @@
     },
     "bonsai-27b": {
       "model_id": "bonsai-27b",
-      "ok": false,
-      "load_s": null,
-      "peak_rss_mb": null,
-      "metric": null,
-      "metric_unit": null,
-      "error": "insufficient free RAM at probe time: available 9098 MB < needed 9661 MB (model file 8162 MB + 1500)",
+      "ok": true,
+      "load_s": 51,
+      "peak_rss_mb": 8200,
+      "est_mem_mb": 8200,
+      "metric": 2.11,
+      "metric_unit": "tokens/s",
+      "prompt_tokens_per_s": 6.26,
+      "error": null,
+      "config": "-c 4096 -ngl 20 -fa on -ctk q8_0 -ctv q8_0 --no-warmup -np 1",
+      "note": "reasoning model: content empty until thinking ends; measured by controller on 2026-11-02",
+      "measured_by": "controller (manual, not by tools/smoketest.py)",
       "attempts": []
     }
   },
