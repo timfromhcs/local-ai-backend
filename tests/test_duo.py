@@ -162,3 +162,54 @@ def test_to_sse_chunks_roundtrip():
 def test_to_sse_chunks_tool_calls():
     chunks = b"".join(to_sse_chunks(tool(cid="x_1"), "duo"))
     assert b"tool_calls" in chunks and b"x_1" in chunks and b'"finish_reason": "tool_calls"' in chunks
+
+
+# ---- modes integration ------------------------------------------------------------------------
+from localai_gateway.modes import Mode  # noqa: E402
+
+
+class StubModes:
+    def __init__(self, *modes):
+        self.modes, self.failed = list(modes), []
+
+    async def decide(self, key, body):
+        return self.modes.pop(0) if len(self.modes) > 1 else self.modes[0]
+
+    def note_verification_failed(self, key):
+        self.failed.append(key)
+
+
+async def test_fast_mode_uses_only_the_small_executor_no_plan_no_verify():
+    f = Fake(E=[tool()])
+    out = await Duo(f, CFG, modes=StubModes(Mode.FAST)).chat(req())
+    assert f.models() == ["E"] and out["choices"][0]["message"]["tool_calls"][0]["id"] == "x_call1"
+    assert out["model"] == "duo"
+
+
+async def test_bigout_small_digests_input_big_writes_output_with_compact_tools():
+    long_tool = {"type": "function", "function": {"name": "bash", "description": "d" * 900, "parameters": {"type": "object"}}}
+    f = Fake(E=[text("BRIEF: goal is X")], V=[tool(cid="b1")])
+    body = req(asst_call("x_9"), tool_msg("x_9", "Traceback boom " * 200))
+    body["tools"] = [long_tool]
+    out = await Duo(f, CFG, modes=StubModes(Mode.BIGOUT)).chat(body)
+    assert f.models() == ["E", "V"]                                         # small in, big out; no planner call
+    big = f.calls[1][1]
+    assert len(big["tools"][0]["function"]["description"]) <= 160            # compact tool list for the big model
+    assert "BRIEF: goal is X" in big["messages"][1]["content"] and len(big["messages"][1]["content"]) < 2500
+    assert out["choices"][0]["message"]["tool_calls"][0]["id"] == "b_b1"
+
+
+async def test_bigout_results_come_back_with_prefix_stripped_upstream():
+    f = Fake(E=[text("brief"), text("brief2")], V=[tool(cid="b1"), text("all done")])
+    d = Duo(f, CFG, modes=StubModes(Mode.BIGOUT))
+    await d.chat(req())
+    out = await d.chat(req(asst_call("b_b1"), tool_msg("b_b1", "3 passed")))
+    assert out["choices"][0]["message"]["content"] == "all done"
+    assert "b_b1" not in str(f.calls[3][1]) and "3 passed" in str(f.calls[3][1])
+
+
+async def test_verifier_fix_notifies_mode_controller_for_escalation():
+    f = Fake(P=[text("plan")], E=[text("v1"), text("v2")], V=[text("FIX: broken"), text("VERIFIED: ok")])
+    modes = StubModes(Mode.DUO)
+    await Duo(f, CFG, modes=modes).chat(req())
+    assert len(modes.failed) == 1

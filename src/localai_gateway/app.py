@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from .adapters.llm import BackendError, forward_chat, iter_stream, open_stream
 from .config import Settings
 from .duo import Duo, DuoConfig, to_sse_chunks
+from .modes import ModeController
 from .registry import ModelSpec
 from .scheduler import DoesNotFit, ModelUnavailable
 from .warmup import normalize_for_cache
@@ -75,7 +76,24 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
         finally:
             await scheduler.release(model_id)
 
-    duo = Duo(call_model, duo_config)
+    cfg = duo_config or DuoConfig()
+
+    async def ask_jev(prompt: str) -> str | None:
+        """Mode check-up on the fast external model (Jev); any failure => heuristics decide."""
+        spec = registry.get(cfg.fast)
+        if spec is None or spec.status != "ready":
+            return None
+        ep, err = await acquire(cfg.fast)
+        if err is not None:
+            return None
+        try:
+            r = await forward_chat(ep.base_url, {"model": cfg.fast, "max_tokens": 6, "temperature": 0,
+                                                 "messages": [{"role": "user", "content": prompt}]}, holder["client"])
+            return (r["choices"][0]["message"].get("content") or "").strip()
+        finally:
+            await scheduler.release(cfg.fast)
+
+    duo = Duo(call_model, cfg, modes=ModeController(ask_jev))
 
     @app.get("/healthz")
     async def healthz() -> dict:

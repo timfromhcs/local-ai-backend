@@ -12,6 +12,8 @@ import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Iterator
 
+from .modes import Mode
+
 CallFn = Callable[[str, dict], Awaitable[dict]]
 
 PLANNER_SYSTEM = ("You are the planner. Write a numbered plan of at most 8 short steps for the task. "
@@ -20,6 +22,10 @@ VERIFIER_SYSTEM = ("You are the verifier. Decide whether the executor's work is 
                    "If code changed and is not yet verified, call a tool to run the relevant tests or commands. "
                    "When verified reply exactly 'VERIFIED: <one line>'. If something is wrong reply exactly "
                    "'FIX: <what to fix>'. Keep replies short.")
+DIGEST_SYSTEM = ("Condense the conversation so far into a brief for a stronger model (max 200 words): the goal, files "
+                 "touched, commands run with their key results, and current blockers. Facts only.")
+BIGOUT_SYSTEM = ("You are the strong model. A small assistant prepared the brief below. Decide the next step: call exactly "
+                 "one tool, or give the final answer if the task is done. Be precise and concise.")
 
 
 @dataclass
@@ -33,6 +39,8 @@ class DuoConfig:
     verify_max_tokens: int = 1500
     state_ttl_s: float = 6 * 3600
     fast_max_chars: int = 400
+    bigout_max_tokens: int = 2000
+    digest_max_tokens: int = 800
 
 
 @dataclass
@@ -42,6 +50,7 @@ class _State:
     rounds: int = 0
     answer: str = ""
     feedback: str = ""
+    planned: bool = False
 
 
 def _text(m: dict) -> str:
@@ -52,12 +61,13 @@ def _text(m: dict) -> str:
 
 
 def _strip(cid: str | None) -> str | None:
-    return cid[2:] if cid and cid[:2] in ("x_", "v_") else cid
+    return cid[2:] if cid and cid[:2] in ("x_", "v_", "b_") else cid
 
 
 class Duo:
-    def __init__(self, call: CallFn, cfg: DuoConfig | None = None, clock: Callable[[], float] = time.monotonic) -> None:
-        self.call, self.cfg, self._clock = call, cfg or DuoConfig(), clock
+    def __init__(self, call: CallFn, cfg: DuoConfig | None = None, clock: Callable[[], float] = time.monotonic,
+                 modes: Any = None) -> None:
+        self.call, self.cfg, self._clock, self.modes = call, cfg or DuoConfig(), clock, modes
         self._states: dict[str, _State] = {}
 
     # ---- public -------------------------------------------------------------------------------
@@ -68,9 +78,16 @@ class Duo:
             model = self.cfg.fast if chars < self.cfg.fast_max_chars else self.cfg.executor
             return self._label(await self.call(model, self._upstream(body, model)))
         key = self._key(msgs, tools)
+        mode = await self.modes.decide(key, body) if self.modes is not None else Mode.DUO
+        if mode == Mode.FAST:
+            return await self._fast(body)
         st = self._get(key)
         if st is None:
-            st = self._states[key] = _State(plan=await self._plan(msgs, tools), created=self._clock())
+            st = self._states[key] = _State(plan="", created=self._clock())
+        if mode == Mode.BIGOUT:
+            return await self._bigout(body)
+        if not st.planned:
+            st.plan, st.planned = await self._plan(msgs, tools), True
         if self._pending_role(msgs) == "v":
             return await self._verify(body, st)
         return await self._execute(body, st)
@@ -121,10 +138,45 @@ class Duo:
         if not verdict:
             return self._final(st, executor_resp, note="")
         if verdict.upper().startswith("FIX"):
+            if self.modes is not None:
+                self.modes.note_verification_failed(self._key(msgs, body.get("tools") or []))
             st.feedback = verdict.split(":", 1)[1].strip() if ":" in verdict else verdict
             return await self._execute(body, st)
         st.feedback = ""
         return self._final(st, executor_resp, note=verdict)
+
+    async def _fast(self, body: dict) -> dict:
+        resp = await self.call(self.cfg.executor, self._upstream(body, self.cfg.executor))
+        return self._tag(resp, "x_") if _msg(resp).get("tool_calls") else self._label(resp)
+
+    async def _bigout(self, body: dict) -> dict:
+        """Small in, big out: the small model digests the input into a brief, the big model writes the output."""
+        msgs = body["messages"]
+        task, activity = self._task(msgs), self._activity(msgs)
+        try:
+            brief = (_msg(await self.call(self.cfg.executor, {
+                "model": self.cfg.executor, "max_tokens": self.cfg.digest_max_tokens, "temperature": 0.2,
+                "messages": [{"role": "system", "content": DIGEST_SYSTEM},
+                             {"role": "user", "content": f"Task:\n{task}\n\nActivity:\n{activity}"}]})).get("content") or "").strip()
+        except Exception:
+            brief = ""
+        latest = [_text(m)[:600] for m in msgs if m.get("role") == "tool"][-2:]
+        big = {"model": self.cfg.verifier, "temperature": 0.2, "max_tokens": body.get("max_tokens") or self.cfg.bigout_max_tokens,
+               "tools": self._compact_tools(body.get("tools") or []),
+               "messages": [{"role": "system", "content": BIGOUT_SYSTEM},
+                            {"role": "user", "content": f"Brief:\n{brief or activity}\n\nTask:\n{task}\n\nLatest tool results:\n"
+                                                         + ("\n---\n".join(latest) or "(none)")}]}
+        resp = await self.call(self.cfg.verifier, big)
+        return self._tag(resp, "b_") if _msg(resp).get("tool_calls") else self._label(resp)
+
+    @staticmethod
+    def _compact_tools(tools: list[dict]) -> list[dict]:
+        out = copy.deepcopy(tools)
+        for t in out:
+            fn = t.get("function", {})
+            if isinstance(fn.get("description"), str):
+                fn["description"] = fn["description"][:160]
+        return out
 
     # ---- helpers ------------------------------------------------------------------------------
     def _final(self, st: _State, template: dict | None, note: str) -> dict:
@@ -158,7 +210,7 @@ class Duo:
                 continue
             if m.get("role") == "assistant" and m.get("tool_calls"):
                 cid = m["tool_calls"][0].get("id", "")
-                return "v" if cid.startswith("v_") else "x" if cid.startswith("x_") else None
+                return "v" if cid.startswith("v_") else "b" if cid.startswith("b_") else "x" if cid.startswith("x_") else None
             return None
         return None
 

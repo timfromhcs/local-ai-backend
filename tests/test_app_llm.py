@@ -254,7 +254,7 @@ async def test_duo_virtual_model_runs_plan_execute_verify_and_releases_every_rol
                          json={"model": "duo", "messages": [{"role": "user", "content": "do it"}], "tools": tools})
     assert r.status_code == 200 and "hello" in r.json()["choices"][0]["message"]["content"]
     assert r.json()["model"] == "duo"
-    assert sched.released == ["m", "m", "m"] and sched.in_use == 0          # planner, executor, verifier
+    assert sched.released == ["m"] * 4 and sched.in_use == 0                # Jev mode check-up, planner, executor, verifier
 
 
 async def test_duo_stream_returns_sse_and_done(gw):
