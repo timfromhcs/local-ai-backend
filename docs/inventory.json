@@ -264,15 +264,15 @@
     "bonsai-27b": {
       "model_id": "bonsai-27b",
       "ok": true,
-      "load_s": 51,
+      "load_s": 17,
       "peak_rss_mb": 8200,
       "est_mem_mb": 8200,
-      "metric": 2.11,
+      "metric": 5.81,
       "metric_unit": "tokens/s",
-      "prompt_tokens_per_s": 6.26,
+      "prompt_tokens_per_s": 15.99,
       "error": null,
-      "config": "-c 4096 -ngl 20 -fa on -ctk q8_0 -ctv q8_0 --no-warmup -np 1",
-      "note": "reasoning model: content empty until thinking ends; measured by controller on 2026-11-02",
+      "config": "-c 4096 -ngl 99 -fa on -ctk q8_0 -ctv q8_0 --no-warmup -np 1 -t 8 --reasoning-budget 0",
+      "note": "controller-measured; earlier config -ngl 20 with reasoning on gave 2.11 tok/s",
       "measured_by": "controller (manual, not by tools/smoketest.py)",
       "attempts": []
     }

@@ -10,6 +10,7 @@ models:
     runtime: llama
     est_mem_mb: 9000
     exclusive: true
+    args: ["-c", "4096", "-ngl", "99", "-fa", "on", "-ctk", "q8_0", "-ctv", "q8_0", "--no-warmup", "-np", "1", "-t", "8", "--reasoning-budget", "0"]
     files:
       - Bonsai-2-27B-Philadelphia-Class-MIXED-PTQ1-Q4_0.gguf
   - id: flux2-klein
