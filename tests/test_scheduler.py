@@ -188,3 +188,26 @@ async def test_release_unknown_or_not_loaded_is_noop():
     sched, _ = make([spec("a", 100)])
     await sched.release("a")
     await sched.release("nope")
+
+
+async def test_external_model_returns_fixed_endpoint_without_spawning():
+    ext = ModelSpec(id="jev", kind="llm", files=[], runtime="external", est_mem_mb=0, endpoint="http://127.0.0.1:8080/")
+    sched, sup = make([ext, spec("a", 100)])
+    ep = await sched.ensure_loaded("jev")
+    assert ep.base_url == "http://127.0.0.1:8080" and sup.started == [] and sched.loaded() == []
+    await sched.release("jev")  # no-op, must not raise
+
+
+async def test_virtual_model_is_not_loadable():
+    v = ModelSpec(id="duo", kind="llm", files=[], runtime="virtual", est_mem_mb=0)
+    sched, _ = make([v])
+    with pytest.raises(ModelUnavailable, match="virtual"):
+        await sched.ensure_loaded("duo")
+
+
+async def test_two_models_stay_resident_together_when_budget_allows():
+    sched, sup = make([spec("big", 9000), spec("small", 3600)], budget=16800)
+    await sched.ensure_loaded("big"); await sched.release("big")
+    await sched.ensure_loaded("small"); await sched.release("small")
+    await sched.ensure_loaded("big")
+    assert sorted(sched.loaded()) == ["big", "small"] and sup.started == ["big", "small"] and sup.stopped == []

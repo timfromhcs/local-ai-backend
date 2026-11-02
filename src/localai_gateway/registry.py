@@ -19,6 +19,7 @@ class ModelSpec(BaseModel):
     reason: str | None = None
     experimental: bool = False
     notes: str | None = None
+    endpoint: str | None = None  # runtime "external": an already running OpenAI-compatible server (never spawned)
 
 
 def load_registry(path: Path, model_dir: Path) -> dict[str, ModelSpec]:

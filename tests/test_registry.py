@@ -12,7 +12,10 @@ YAML = ROOT / "models.yaml"
 def test_loads_models_yaml():
     reg = load_registry(YAML, ROOT)
     assert {"qwen3-4b", "bonsai-27b", "flux2-klein"} <= set(reg)
-    assert reg["bonsai-27b"].exclusive is True
+    assert reg["bonsai-27b"].exclusive is False          # duo keeps planner and executor resident together
+    assert reg["duo"].runtime == "virtual" and reg["jev-1.5b"].runtime == "external"
+    assert reg["jev-1.5b"].endpoint == "http://127.0.0.1:8080"
+    assert "--jinja" in reg["qwen3-4b"].args and "--jinja" in reg["bonsai-27b"].args
     assert reg["qwen3-4b"].runtime == "llama"
     assert reg["flux2-klein"].runtime == "sd"
     assert reg["lance-video"].status == "unsupported"

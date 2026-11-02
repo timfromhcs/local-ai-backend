@@ -68,6 +68,12 @@ class Scheduler:
         spec = self.registry[model_id]  # KeyError for unknown ids
         if spec.status != "ready":
             raise ModelUnavailable(spec.reason or spec.status)
+        if spec.runtime == "external":  # already running elsewhere (e.g. the Jev server): no spawn, no budget
+            if not spec.endpoint:
+                raise ModelUnavailable(f"{model_id}: external model without endpoint")
+            return Endpoint(spec.endpoint.rstrip("/"))
+        if spec.runtime == "virtual":
+            raise ModelUnavailable(f"{model_id} is a virtual model; it is orchestrated by the gateway, not loaded")
         if spec.est_mem_mb > self.settings.budget_mb:
             raise DoesNotFit(f"{model_id} needs {spec.est_mem_mb} MB, budget is {self.settings.budget_mb} MB")
         fresh = False  # True right after we (or a concurrent caller) started it: supervisor just verified health
