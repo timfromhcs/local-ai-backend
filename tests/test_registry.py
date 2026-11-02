@@ -17,6 +17,8 @@ def test_loads_models_yaml():
     assert reg["flux2-klein"].runtime == "sd"
     assert reg["lance-video"].status == "unsupported"
     assert reg["slat-3d"].status == "unsupported"
+    assert reg["lance-video"].reason == "unverified in phase 1"
+    assert reg["slat-3d"].reason == "unverified in phase 1"
 
 
 def test_missing_file_marks_unavailable(tmp_path):
@@ -25,7 +27,9 @@ def test_missing_file_marks_unavailable(tmp_path):
     for mid in ready_ids:
         spec = reg[mid]
         assert spec.status == "unavailable"
-        assert spec.reason and spec.files[0].name in spec.reason
+        assert spec.reason
+        for f in spec.files:
+            assert f.name in spec.reason
     # unsupported is preserved
     assert reg["lance-video"].status == "unsupported"
     assert reg["slat-3d"].status == "unsupported"
