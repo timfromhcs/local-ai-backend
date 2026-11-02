@@ -5,7 +5,7 @@ models:
     runtime: llama
     est_mem_mb: 3600
     warm_prefix: true
-    args: ["-c", "16384", "-ngl", "99", "-fa", "on", "-ctk", "q8_0", "-ctv", "q8_0", "--no-warmup", "-np", "1", "-t", "8", "-ub", "256", "--jinja", "--reasoning-budget", "0"]
+    args: ["-c", "16384", "-ngl", "99", "-fa", "on", "-ctk", "q8_0", "-ctv", "q8_0", "--no-warmup", "-np", "1", "-t", "8", "-ub", "256", "--jinja"]
     notes: "Executor (abliterated Qwen3-4B Q4_K_M, ~22.6 tok/s decode measured). --jinja is required for tool calls; keep KV at q8_0 (q4_0 degrades tool calling)."
     files:
       - mlabonne_Qwen3-4B-abliterated-Q4_K_M.gguf
@@ -13,8 +13,8 @@ models:
     kind: llm
     runtime: llama
     est_mem_mb: 9000
-    args: ["-c", "16384", "-ngl", "99", "-fa", "on", "-ctk", "q8_0", "-ctv", "q8_0", "--no-warmup", "-np", "1", "-t", "8", "--reasoning-budget", "0", "-ub", "256", "-b", "2048", "-ctxcp", "12", "-cms", "2048", "-cram", "2048", "--cache-reuse", "256", "--jinja"]
-    notes: "Planner and verifier (5.9 tok/s decode, ~32 tok/s prefill measured; flags from docs/perf-log.md)."
+    args: ["-c", "16384", "-ngl", "99", "-fa", "on", "-ctk", "q8_0", "-ctv", "q8_0", "--no-warmup", "-np", "1", "-t", "8", "-ub", "256", "-b", "2048", "-ctxcp", "12", "-cms", "2048", "-cram", "2048", "--cache-reuse", "256", "--jinja"]
+    notes: "Planner and verifier, thinking ON (5.9 tok/s decode, ~32 tok/s prefill measured; flags from docs/perf-log.md)."
     files:
       - Bonsai-2-27B-Philadelphia-Class-MIXED-PTQ1-Q4_0.gguf
   # --- external System-1 server (not started by the gateway; the user's Jev llama-server) ---

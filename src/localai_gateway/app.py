@@ -14,6 +14,7 @@ from .config import Settings
 from .duo import Duo, DuoConfig, to_sse_chunks
 from .registry import ModelSpec
 from .scheduler import DoesNotFit, ModelUnavailable
+from .warmup import normalize_for_cache
 from .supervisor import BackendStartError
 
 
@@ -46,6 +47,12 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
         pending.add(task)
         task.add_done_callback(pending.discard)
 
+    def prepare(model_id: str, body: dict) -> dict:
+        """Per-model request prep: thinking stays ON (model default; the caller may override); stable cacheable prefix."""
+        b = {**body}
+        spec = registry.get(model_id)
+        return normalize_for_cache(b) if spec is not None and spec.warm_prefix else b
+
     async def acquire(model_id: str):
         try:
             return await scheduler.ensure_loaded(model_id), None
@@ -64,7 +71,7 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
         if err is not None:
             raise BackendError(f"{model_id}: {err.body.decode()[:200]}")
         try:
-            return await forward_chat(ep.base_url, {**body, "stream": False}, holder["client"])
+            return await forward_chat(ep.base_url, {**prepare(model_id, body), "stream": False}, holder["client"])
         finally:
             await scheduler.release(model_id)
 
@@ -112,6 +119,7 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
         if err is not None:
             return err
         client = holder["client"]
+        body = prepare(mid, body)
         if not stream:
             try:
                 return JSONResponse(await forward_chat(ep.base_url, body, client))

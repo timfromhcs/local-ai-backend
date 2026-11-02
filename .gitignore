@@ -13,3 +13,4 @@ dist/
 .superpowers/
 drafter/
 .venv-train/
+cache/

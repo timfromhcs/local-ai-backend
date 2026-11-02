@@ -66,8 +66,9 @@ async def test_first_request_plans_then_executes_with_plan_injected():
     out = await Duo(f, CFG).chat(req())
     assert f.models() == ["P", "E"]
     assert "tools" not in f.calls[0][1]                                   # planner must not call tools
-    sys_msg = f.calls[1][1]["messages"][0]["content"]
-    assert "run tests" in sys_msg and "You are a coding agent." in sys_msg
+    msgs = f.calls[1][1]["messages"]
+    assert msgs[0]["content"] == "You are a coding agent."                  # system prompt untouched -> cache-stable
+    assert "run tests" in msgs[1]["content"] and msgs[1]["content"].endswith("fix the bug")   # plan lives in user turn
     assert f.calls[1][1]["tools"] == TOOLS
     assert out["choices"][0]["message"]["tool_calls"][0]["id"] == "x_call1"
 

@@ -9,13 +9,14 @@ Warmer(directory: Path, client: httpx.AsyncClient)
   filename(model_id, key) / known(model_id, key) -> bool
   await restore(base_url, model_id, key) -> bool ; await save(...) -> bool      (never raise; False on failure)
   await warm(base_url, model_id, prefix_body) -> WarmResult(state in {"restored","computed","failed"}, tokens, detail)
-cut_point(pieces: list[bytes], text: bytes, marker=b"<env>", margin_bytes=64) -> int | None
+cut_point(pieces: list[bytes], text: bytes, limit_bytes: int) -> int | None   (tokens that end within limit_bytes)
+normalize_for_cache(body) -> body   moves the volatile <env>..</env> block from the system prompt to the first user message
 """
 import json
 
 import httpx
 
-from localai_gateway.warmup import Warmer, cut_point
+from localai_gateway.warmup import Warmer, cut_point, normalize_for_cache
 
 TOOLS = [{"type": "function", "function": {"name": "read", "parameters": {}}}]
 STABLE = "You are an agent.\n<available_skills>" + "skill " * 50 + "</available_skills>\n"
@@ -41,18 +42,39 @@ def test_key_changes_when_skills_or_tools_change():
     assert Warmer.prefix_key(body(STABLE + env("x"), tools=[])) != base
 
 
-# ---- cut point ---------------------------------------------------------------------------------
-def test_cut_point_stops_before_marker_with_margin():
-    text = b"AAAA BBBB CCCC <env> DDDD"
-    pieces = [b"AAAA", b" BBBB", b" CCCC", b" <env>", b" DDDD"]
-    assert b"".join(pieces) == text
-    assert cut_point(pieces, text, margin_bytes=0) == 3      # 3 pieces end exactly at the space before the marker region
-    assert cut_point(pieces, text, margin_bytes=6) == 2      # margin keeps the cut away from the boundary token
+# ---- cut point / normalize ----------------------------------------------------------------------
+def test_cut_point_counts_tokens_ending_within_limit():
+    text = b"AAAA BBBB CCCC DDDD"
+    pieces = [b"AAAA", b" BBBB", b" CCCC", b" DDDD"]
+    assert cut_point(pieces, text, 14) == 3 and cut_point(pieces, text, 13) == 2 and cut_point(pieces, text, 3) == 0
 
 
-def test_cut_point_returns_none_when_pieces_do_not_rebuild_text_or_marker_missing():
-    assert cut_point([b"a", b"b"], b"abc") is None
-    assert cut_point([b"ab", b"c"], b"abc") is None          # no marker
+def test_cut_point_none_when_pieces_do_not_rebuild_text():
+    assert cut_point([b"a", b"b"], b"abc", 3) is None
+
+
+def test_normalize_moves_env_block_into_first_user_message():
+    b = body(STABLE + env("C:/a"), user="question")
+    n = normalize_for_cache(b)
+    sys_text, user_text = n["messages"][0]["content"], n["messages"][1]["content"]
+    assert "<env>" not in sys_text and sys_text.startswith("You are an agent.")
+    assert user_text.startswith("<env>") and "C:/a" in user_text and user_text.endswith("question")
+    assert b["messages"][0]["content"].count("<env>") == 1                     # input not mutated
+    assert normalize_for_cache(n) == n                                          # idempotent
+
+
+def test_normalize_leaves_bodies_without_env_untouched_and_handles_list_content():
+    assert normalize_for_cache(body("plain")) == body("plain")
+    b = {"messages": [{"role": "system", "content": [{"type": "text", "text": "S " + env("x")}]},
+                      {"role": "user", "content": [{"type": "text", "text": "hi"}]}]}
+    n = normalize_for_cache(b)
+    assert "<env>" not in json.dumps(n["messages"][0]) and "<env>" in json.dumps(n["messages"][1])
+
+
+def test_normalized_keys_equal_across_different_cwds():
+    a = Warmer.prefix_key(normalize_for_cache(body(STABLE + env("C:/a"), user="one")))
+    b = Warmer.prefix_key(normalize_for_cache(body(STABLE + env("C:/zzz"), user="two")))
+    assert a == b
 
 
 # ---- files / http ------------------------------------------------------------------------------
@@ -96,14 +118,17 @@ class FakeLlama:
 
     def __init__(self, files_ok=False):
         self.calls, self.files_ok = [], files_ok
-        self.rendered = "SYS " + "skillword " * 30 + "<env> cwd </env> tail"
+        self.stable = "SYS " + "skillword " * 30
 
     def __call__(self, req: httpx.Request) -> httpx.Response:
         path, payload = req.url.path, json.loads(req.content) if req.content else {}
         self.calls.append((path, req.url.params.get("action")))
         if path == "/apply-template":
+            user = [m for m in payload["messages"] if m["role"] == "user"][-1]["content"]
+            self.rendered = self.stable + "\n<user>" + (user if isinstance(user, str) else "x")
             return httpx.Response(200, json={"prompt": self.rendered})
         if path == "/tokenize":
+            self.rendered = payload["content"]
             words = self.rendered.split(" ")
             pieces = [(w if i == 0 else " " + w) for i, w in enumerate(words)]
             return httpx.Response(200, json={"tokens": [{"id": i, "piece": p} for i, p in enumerate(pieces)]})
@@ -125,7 +150,9 @@ async def test_warm_computes_once_then_restores_on_next_start(tmp_path):
     assert r1.state == "computed" and r1.tokens > 5
     n_ids = len(fake.completion["prompt"])
     assert n_ids == r1.tokens and fake.completion["cache_prompt"] is True and fake.completion["n_predict"] == 0
-    assert ("/slots/0", "save") in fake.calls and fake.rendered.count("skillword") > 0
+    assert ("/slots/0", "save") in fake.calls
+    assert fake.calls.count(("/apply-template", None)) == 2                     # two renderings -> template-agnostic boundary
+    assert n_ids <= len(fake.stable.split(" "))                                  # cut lies inside the stable part
     # the slot file now exists on "SSD" (fake server wrote nothing, so simulate llama-server's file):
     (tmp_path / w.filename("m", Warmer.prefix_key(pb))).write_bytes(b"slot")
     fake.files_ok, fake.calls = True, []

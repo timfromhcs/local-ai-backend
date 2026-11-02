@@ -14,8 +14,8 @@ import httpx
 
 log = logging.getLogger("localai_gateway.warmup")
 
-MARKER = b"<env>"
 MIN_TOKENS = 16
+MARGIN_BYTES = 64
 
 
 @dataclass
@@ -34,20 +34,53 @@ def _system_text(body: dict) -> str:
     return ""
 
 
-def cut_point(pieces: list[bytes], text: bytes, marker: bytes = MARKER, margin_bytes: int = 64) -> int | None:
-    """Number of leading tokens that end at least `margin_bytes` before the volatile marker (token-exact prefix)."""
+def cut_point(pieces: list[bytes], text: bytes, limit_bytes: int) -> int | None:
+    """Number of leading tokens that end within `limit_bytes` of `text` (None if the pieces do not rebuild the text)."""
     if b"".join(pieces) != text:
         return None
-    pos = text.find(marker)
-    if pos < 0:
-        return None
-    limit, total, n = pos - margin_bytes, 0, 0
+    total, n = 0, 0
     for p in pieces:
-        if total + len(p) > limit:
+        if total + len(p) > limit_bytes:
             break
         total += len(p)
         n += 1
     return n
+
+
+_ENV = re.compile(r"<env>.*?</env>\n?", re.S)
+
+
+def normalize_for_cache(body: dict) -> dict:
+    """Move the volatile <env>..</env> block (cwd etc.) from the system prompt to the first user message.
+
+    Chat templates render tool schemas right after the system text, so a volatile block inside the system prompt
+    would invalidate the cache for the whole tool section too. Idempotent; never mutates the input."""
+    out = json.loads(json.dumps(body))
+    msgs = out.get("messages", [])
+    sys_i = next((i for i, m in enumerate(msgs) if m.get("role") == "system"), None)
+    usr_i = next((i for i, m in enumerate(msgs) if m.get("role") == "user"), None)
+    if sys_i is None or usr_i is None:
+        return out
+    sm, block = msgs[sys_i], None
+    if isinstance(sm.get("content"), str):
+        m = _ENV.search(sm["content"])
+        if m:
+            block, sm["content"] = m.group(0), (sm["content"][:m.start()] + sm["content"][m.end():]).rstrip() + "\n"
+    elif isinstance(sm.get("content"), list):
+        for part in sm["content"]:
+            if isinstance(part, dict) and isinstance(part.get("text"), str):
+                m = _ENV.search(part["text"])
+                if m:
+                    block, part["text"] = m.group(0), (part["text"][:m.start()] + part["text"][m.end():]).rstrip() + "\n"
+                    break
+    if block is None:
+        return out
+    um = msgs[usr_i]
+    if isinstance(um.get("content"), str):
+        um["content"] = block.rstrip() + "\n" + um["content"]
+    elif isinstance(um.get("content"), list):
+        um["content"].insert(0, {"type": "text", "text": block.rstrip() + "\n"})
+    return out
 
 
 class Warmer:
@@ -56,9 +89,7 @@ class Warmer:
 
     @staticmethod
     def prefix_key(body: dict) -> str:
-        sysc = _system_text(body)
-        cut = sysc.find(MARKER.decode())
-        stable = sysc if cut < 0 else sysc[:cut]
+        stable = _ENV.sub("", _system_text(body))
         return hashlib.sha1(json.dumps([body.get("tools") or [], stable], sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
     def filename(self, model_id: str, key: str) -> str:
@@ -87,14 +118,26 @@ class Warmer:
         if self.known(model_id, key) and await self.restore(base, model_id, key):
             return done("restored")
         try:
-            tpl = {k: v for k, v in prefix_body.items() if k in ("messages", "tools")}
-            rendered = (await self.client.post(f"{base}/apply-template", json=tpl, timeout=60)).json()["prompt"]
+            body = normalize_for_cache(prefix_body)
+            rendered: list[str] = []
+            for probe in ("\u0001A", "\u0001B"):  # two different user turns -> their common prefix is the stable part
+                variant = json.loads(json.dumps({k: v for k, v in body.items() if k in ("messages", "tools")}))
+                u = next(m for m in reversed(variant["messages"]) if m.get("role") == "user")
+                if isinstance(u["content"], str):
+                    u["content"] = u["content"] + probe
+                else:
+                    u["content"] = u["content"] + [{"type": "text", "text": probe}]
+                rendered.append((await self.client.post(f"{base}/apply-template", json=variant, timeout=60)).json()["prompt"])
+            a_b, b_b = rendered[0].encode(), rendered[1].encode()
+            lcp = 0
+            while lcp < min(len(a_b), len(b_b)) and a_b[lcp] == b_b[lcp]:
+                lcp += 1
             tok = (await self.client.post(f"{base}/tokenize", timeout=120, json={
-                "content": rendered, "add_special": False, "parse_special": True, "with_pieces": True})).json()["tokens"]
+                "content": rendered[0], "add_special": False, "parse_special": True, "with_pieces": True})).json()["tokens"]
             pieces = [bytes(t["piece"]) if isinstance(t["piece"], list) else t["piece"].encode() for t in tok]
-            n = cut_point(pieces, rendered.encode())
+            n = cut_point(pieces, a_b, lcp - MARGIN_BYTES)
             if n is None or n < MIN_TOKENS:
-                return done("failed", 0, "no stable cut point before <env>")
+                return done("failed", 0, "no stable cut point")
             r = await self.client.post(f"{base}/completion", timeout=7200, json={
                 "prompt": [t["id"] for t in tok][:n], "n_predict": 0, "cache_prompt": True, "id_slot": 0, "temperature": 0})
             if r.status_code != 200:

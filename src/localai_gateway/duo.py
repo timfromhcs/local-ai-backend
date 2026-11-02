@@ -29,8 +29,8 @@ class DuoConfig:
     verifier: str = "bonsai-27b"
     fast: str = "jev-1.5b"
     max_verify_rounds: int = 3
-    plan_max_tokens: int = 300
-    verify_max_tokens: int = 400
+    plan_max_tokens: int = 1500      # thinking is ON: the budget must cover reasoning + the short answer
+    verify_max_tokens: int = 1500
     state_ttl_s: float = 6 * 3600
     fast_max_chars: int = 400
 
@@ -79,11 +79,10 @@ class Duo:
     async def _plan(self, msgs: list[dict], tools: list[dict]) -> str:
         names = ", ".join(t["function"]["name"] for t in tools)
         body = {"model": self.cfg.planner, "temperature": 0.2, "max_tokens": self.cfg.plan_max_tokens,
-                "chat_template_kwargs": {"enable_thinking": False},
                 "messages": [{"role": "system", "content": PLANNER_SYSTEM},
                              {"role": "user", "content": f"Task:\n{self._task(msgs)}\n\nAvailable tools: {names}"}]}
         try:
-            return (_msg(await self.call(self.cfg.planner, body)).get("content") or "").strip()
+            return (_msg(await self.call(self.cfg.planner, body)).get("content") or "").strip()  # "" if it ran out while thinking
         except Exception:
             return ""
 
@@ -109,7 +108,7 @@ class Duo:
         user = (f"Task:\n{self._task(msgs)}\n\nPlan:\n{st.plan or '(none)'}\n\nWork so far:\n{self._activity(msgs)}"
                 f"\n\nExecutor's latest answer:\n{st.answer or '(none yet)'}")
         vbody = {"model": self.cfg.verifier, "temperature": 0.1, "max_tokens": self.cfg.verify_max_tokens,
-                 "tools": body.get("tools"), "chat_template_kwargs": {"enable_thinking": False},
+                 "tools": body.get("tools"),
                  "messages": [{"role": "system", "content": VERIFIER_SYSTEM}, {"role": "user", "content": user}]}
         try:
             resp = await self.call(self.cfg.verifier, vbody)
@@ -119,6 +118,8 @@ class Duo:
         if msg.get("tool_calls"):
             return self._tag(resp, "v_")
         verdict = (msg.get("content") or "").strip()
+        if not verdict:
+            return self._final(st, executor_resp, note="")
         if verdict.upper().startswith("FIX"):
             st.feedback = verdict.split(":", 1)[1].strip() if ":" in verdict else verdict
             return await self._execute(body, st)
@@ -177,18 +178,22 @@ class Duo:
         b = copy.deepcopy(body)
         b.update(model=model, stream=False)
         b.pop("stream_options", None)
-        b.setdefault("chat_template_kwargs", {"enable_thinking": False})
         for m in b["messages"]:
             if m.get("role") == "tool":
                 m["tool_call_id"] = _strip(m.get("tool_call_id"))
             for tc in m.get("tool_calls") or []:
                 tc["id"] = _strip(tc.get("id"))
         if system_extra:
-            first = b["messages"][0]
-            if first.get("role") == "system":
-                first["content"] = f"{_text(first)}\n\n{system_extra}"
+            # Chat templates render tool schemas right after the system text: anything task-specific must NOT sit in
+            # the system prompt or it invalidates the cached system+tools prefix. Put it in the first user message.
+            block = f"<planner_guidance>\n{system_extra}\n</planner_guidance>\n\n"
+            first_user = next((m for m in b["messages"] if m.get("role") == "user"), None)
+            if first_user is None:
+                b["messages"].append({"role": "user", "content": block})
+            elif isinstance(first_user.get("content"), list):
+                first_user["content"].insert(0, {"type": "text", "text": block})
             else:
-                b["messages"].insert(0, {"role": "system", "content": system_extra})
+                first_user["content"] = block + (first_user.get("content") or "")
         return b
 
     @staticmethod
