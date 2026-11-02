@@ -1,0 +1,7 @@
+{
+  "model_name": "google-t5/t5-base",
+  "max_length": 77,
+  "vocab_size": 32100,
+  "pad_token_id": 0,
+  "eos_token_id": 1
+}

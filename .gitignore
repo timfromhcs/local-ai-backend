@@ -1,0 +1,12 @@
+*.gguf
+*.safetensors
+*.onnx
+*.zip
+*.db
+bin/
+models/
+.venv/
+__pycache__/
+*.egg-info/
+dist/
+.env
