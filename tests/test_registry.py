@@ -17,8 +17,8 @@ def test_loads_models_yaml():
     assert reg["flux2-klein"].runtime == "sd"
     assert reg["lance-video"].status == "unsupported"
     assert reg["slat-3d"].status == "unsupported"
-    assert reg["lance-video"].reason == "unverified in phase 1"
-    assert reg["slat-3d"].reason == "unverified in phase 1"
+    assert "too long" in reg["lance-video"].reason
+    assert "unknown model architecture" in reg["slat-3d"].reason
 
 
 def test_missing_file_marks_unavailable(tmp_path):
