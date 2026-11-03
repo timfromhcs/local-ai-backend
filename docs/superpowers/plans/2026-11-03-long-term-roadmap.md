@@ -98,6 +98,9 @@ shortfall. 13 more sessions are needed before a 1.5B run is worth the CPU hours.
   Qwen3.5-0.8B) is disabled at load, which earlier would have looked like "no speedup". Details in
   `docs/perf-log.md`; speculation stays off in `models.yaml`.
 - OPFS + SQLite-WASM for durable per-user data beyond IndexedDB size limits.
+  **Partly done 2026-11-03:** OPFS now stores lab/benchmark runs (1 MB round-trip verified), while
+  preferences stay in IndexedDB because it is faster for tiny reads. SQLite-WASM is still open and
+  only worth it if querying across runs becomes a real need.
 - PWA install for the phone path, with an offline shell and explicit model download sizes.
 - Gate: each item ships with a measured number or is deleted from the plan.
 
