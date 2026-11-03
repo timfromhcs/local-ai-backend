@@ -247,10 +247,14 @@ async def test_death_right_after_healthy_is_start_error():
 
 
 async def test_port_in_use_raises():
-    port = free_port()
+    # Bind an ephemeral port ourselves: free_port() can hand back a port that still has
+    # TIME_WAIT sockets on Linux, and this test wants a *listening* port, not a free one.
     s = socket.socket()
-    s.bind(("127.0.0.1", port))
+    if sys.platform != "win32":
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("127.0.0.1", 0))
     s.listen()
+    port = s.getsockname()[1]
     try:
         sup = Supervisor()
         with pytest.raises(BackendStartError):
