@@ -23,7 +23,17 @@ class BackendStartError(Exception):
 
 
 def _port_free(port: int) -> bool:
+    """True when nothing is *listening* on the port.
+
+    On Linux a plain bind fails with EADDRINUSE while sockets from our own health
+    checks sit in TIME_WAIT, so every restart was rejected with "port in use on
+    restart" and burned the backoff budget (found by CI on ubuntu-latest).
+    SO_REUSEADDR fixes POSIX. It is deliberately NOT set on Windows, where it would
+    let us bind a port that is actively listened on.
+    """
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        if sys.platform != "win32":
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             s.bind(("127.0.0.1", port))
         except OSError:
