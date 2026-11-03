@@ -64,6 +64,11 @@ p { margin: 0 0 1rem; }
   min-width: 44px; min-height: 44px;
 }
 .lang button.on { background: var(--accent-2); color: #fff; }
+/* the install button would overflow the 375px header; mobile browsers offer their own prompt */
+.install { display: none; }
+@media (min-width: 768px) {
+  .install:not([hidden]) { display: inline-flex; }
+}
 
 /* hero */
 .hero { padding: clamp(2.4rem, 6vw, 4.5rem) 0 clamp(2rem, 4vw, 3rem); }
