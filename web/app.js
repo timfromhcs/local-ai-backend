@@ -293,6 +293,7 @@ $('#run-lab').addEventListener('click', async () => {
       rows: TEST.map(([text], i) => ({ task: text, score: head.predict(testX[i]).indexOf(Math.max(...head.predict(testX[i]))) === testY[i] })),
     }).catch(() => null);
     if (saved) out.insertAdjacentHTML('beforeend', `<p class="note">${t('storage.saved')}: <code>${saved}</code></p>`);
+    renderHistory();
     $('#download-lab').disabled = false;
   } catch (e) {
     out.innerHTML = `<p class="status bad">${e.message}</p>`;
@@ -663,8 +664,40 @@ const store = {
   },
 };
 
+async function renderHistory() {
+  const host = $('#run-history');
+  if (!host) return 0;
+  if (!(await opfs.available())) {
+    host.innerHTML = `<p class="note">${t('history.unsupported')}</p>`;
+    return 0;
+  }
+  const names = (await opfs.list()).slice(-10).reverse();
+  if (!names.length) {
+    host.innerHTML = `<p class="note">${t('history.empty')}</p>`;
+    return 0;
+  }
+  const rows = [];
+  for (const name of names) {
+    const run = await opfs.read(name);
+    if (!run?.metrics) continue;
+    const m = run.metrics;
+    rows.push(`<tr><td>${(run.at || '').replace('T', ' ').slice(0, 16)}</td><td>${run.model || '—'}</td>` +
+      `<td>${run.backend || '—'}</td><td>${(m.before * 100).toFixed(0)}% → <b>${(m.after * 100).toFixed(0)}%</b></td></tr>`);
+  }
+  host.innerHTML = rows.length
+    ? `<div class="table-scroll"><table><thead><tr><th>${t('history.col.time')}</th><th>${t('history.col.model')}</th>` +
+      `<th>${t('history.col.backend')}</th><th>${t('history.col.acc')}</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`
+    : `<p class="note">${t('history.empty')}</p>`;
+  return rows.length;
+}
+
+$('#refresh-history')?.addEventListener('click', async () => {
+  const count = await renderHistory();
+  dataStatus(`${t('history.refreshed')}: ${count}`, 'good');
+});
+
 // attach the test hook now that both layers exist
-window.localaiStorage = { opfs, store };
+window.localaiStorage = { opfs, store, renderHistory };
 
 async function restorePrefs() {
   const saved = await store.get('prefs', null);

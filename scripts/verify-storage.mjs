@@ -92,6 +92,25 @@ try {
     return payload;
   });
   check(Boolean(exported.opfs["run-export.json"]), "export includes OPFS files");
+
+  // the stored runs must actually be visible in the UI
+  const history = await page.evaluate(async () => {
+    for (const n of (await window.localaiStorage.opfs.list())) await window.localaiStorage.opfs.clear();
+    await window.localaiStorage.opfs.write("run-1.json", {
+      kind: "lab-run", at: "2026-11-03T10:00:00Z", model: "Qwen2.5 0.5B", backend: "WebGPU",
+      metrics: { before: 0.33, after: 0.83 },
+    });
+    await window.localaiStorage.opfs.write("run-2.json", {
+      kind: "lab-run", at: "2026-11-03T11:00:00Z", model: "Llama 3.2 1B", backend: "WASM",
+      metrics: { before: 0.17, after: 0.67 },
+    });
+    const rendered = await window.localaiStorage.renderHistory();
+    const rows = document.querySelectorAll("#run-history tbody tr").length;
+    const text = document.querySelector("#run-history")?.textContent ?? "";
+    return { rendered, rows, hasModel: text.includes("Qwen2.5 0.5B"), hasAcc: text.includes("33%") };
+  });
+  check(history.rendered === 2 && history.rows === 2, "history renders stored runs", `${history.rows} rows`);
+  check(history.hasModel && history.hasAcc, "history shows model and before→after accuracy");
 } finally {
   await browser.close();
   server.close();
