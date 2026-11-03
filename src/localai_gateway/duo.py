@@ -53,6 +53,7 @@ class _State:
     answer: str = ""
     feedback: str = ""
     planned: bool = False
+    plan_error: str = ""   # a planner that cannot be reached must not look like a planner with no ideas
 
 
 def _text(m: dict) -> str:
@@ -69,6 +70,15 @@ def _strip(cid: str | None) -> str | None:
 # A tool whose result can decide correctness on its own. `duo` refuses to trust an LLM verdict when
 # such a result says "failed": observed on the hard suite, a verifier without ground truth replied
 # VERIFIED to a wrong answer.
+# How trustworthy an answer is, machine-readable in every response as `localai_verification`.
+#   mechanical - a check tool (tests, lint, build) reported success
+#   llm        - a model approved it; an opinion, not evidence
+#   none       - nothing was checked (fast lane, big-out, verifier unreachable, rounds exhausted)
+#   pending    - the answer is a tool call; verification continues on the next request
+#   failed     - a check tool still reports a failure
+VERIFICATION_STATES = {"mechanical", "llm", "none", "pending", "failed"}
+
+
 CHECK_TOOL_RE = re.compile(r"(^|[_\-. ])(tests?|pytest|check|verify|test_suite|lint|typecheck|build|ci)($|[_\-. ])",
                            re.I)
 
@@ -146,22 +156,24 @@ class Duo:
         if mode == Mode.BIGOUT:
             return await self._bigout(body)
         if not st.planned:
-            st.plan, st.planned = await self._plan(msgs, tools), True
+            st.plan, st.plan_error = await self._plan(msgs, tools)
+            st.planned = True
         if self._pending_role(msgs) == "v":
             return await self._verify(body, st)
         return await self._execute(body, st)
 
     # ---- phases -------------------------------------------------------------------------------
-    async def _plan(self, msgs: list[dict], tools: list[dict] | None) -> str:
+    async def _plan(self, msgs: list[dict], tools: list[dict] | None) -> tuple[str, str]:
+        """Returns (plan, error). An unreachable planner returns ("", reason) instead of hiding."""
         # a forced lane can reach the planner without any tools (a plain question), so tolerate None
         names = ", ".join(t["function"]["name"] for t in (tools or [])) or "none"
         body = {"model": self.cfg.planner, "temperature": 0.2, "max_tokens": self.cfg.plan_max_tokens,
                 "messages": [{"role": "system", "content": PLANNER_SYSTEM},
                              {"role": "user", "content": f"Task:\n{self._task(msgs)}\n\nAvailable tools: {names}"}]}
         try:
-            return (_msg(await self.call(self.cfg.planner, body)).get("content") or "").strip()  # "" if it ran out while thinking
-        except Exception:
-            return ""
+            return (_msg(await self.call(self.cfg.planner, body)).get("content") or "").strip(), ""
+        except Exception as exc:  # "" if it ran out while thinking, reason if it never ran
+            return "", f"{type(exc).__name__}: {exc}"[:160]
 
     async def _execute(self, body: dict, st: _State) -> dict:
         extra = ""
@@ -176,7 +188,7 @@ class Duo:
             return self._tag(resp, "x_")
         st.answer = msg.get("content") or ""
         if st.rounds >= self.cfg.max_verify_rounds:
-            return self._label(resp)
+            return self._label(resp, "none", "verification rounds exhausted before a verdict")
         st.rounds += 1
         return await self._verify(body, st, resp)
 
@@ -188,12 +200,14 @@ class Duo:
             state, output = verdict
             if state == "pass":
                 st.feedback = ""
-                return self._final(st, executor_resp, note="tests passed (mechanical check)")
+                return self._final(st, executor_resp, note="tests passed (mechanical check)",
+                                   state="mechanical", detail="check tool reported success")
             st.feedback = output[-800:]
             if st.rounds < self.cfg.max_verify_rounds:
                 st.rounds += 1
                 return await self._execute(body, st)
-            return self._final(st, executor_resp, note="tests still failing (mechanical check)")
+            return self._final(st, executor_resp, note="tests still failing (mechanical check)",
+                                   state="failed", detail="check tool still reports a failure")
         user = (f"Task:\n{self._task(msgs)}\n\nPlan:\n{st.plan or '(none)'}\n\nWork so far:\n{self._activity(msgs)}"
                 f"\n\nExecutor's latest answer:\n{st.answer or '(none yet)'}")
         vbody = {"model": self.cfg.verifier, "temperature": 0.1, "max_tokens": self.cfg.verify_max_tokens,
@@ -203,24 +217,26 @@ class Duo:
         try:
             resp = await self.call(self.cfg.verifier, vbody)
         except Exception:
-            return self._final(st, executor_resp, note="")
+            return self._final(st, executor_resp, note="", detail="verifier unreachable")
         msg = _msg(resp)
         if msg.get("tool_calls"):
             return self._tag(resp, "v_")
         verdict = (msg.get("content") or "").strip()
         if not verdict:
-            return self._final(st, executor_resp, note="")
+            return self._final(st, executor_resp, note="", detail="verifier returned no verdict")
         if verdict.upper().startswith("FIX"):
             if self.modes is not None:
                 self.modes.note_verification_failed(self._key(msgs, body.get("tools") or []))
             st.feedback = verdict.split(":", 1)[1].strip() if ":" in verdict else verdict
             return await self._execute(body, st)
         st.feedback = ""
-        return self._final(st, executor_resp, note=verdict)
+        return self._final(st, executor_resp, note=verdict, state="llm", detail="verifier approved")
 
     async def _fast(self, body: dict) -> dict:
         resp = await self.call(self.cfg.executor, self._upstream(body, self.cfg.executor))
-        return self._tag(resp, "x_") if _msg(resp).get("tool_calls") else self._label(resp)
+        if _msg(resp).get("tool_calls"):
+            return self._tag(resp, "x_")
+        return self._label(resp, "none", "fast lane: no check and no verifier ran")
 
     async def _bigout(self, body: dict) -> dict:
         """Small in, big out: the small model digests the input into a brief, the big model writes the output."""
@@ -240,7 +256,9 @@ class Duo:
                             {"role": "user", "content": f"Brief:\n{brief or activity}\n\nTask:\n{task}\n\nLatest tool results:\n"
                                                          + ("\n---\n".join(latest) or "(none)")}]}
         resp = await self.call(self.cfg.verifier, big)
-        return self._tag(resp, "b_") if _msg(resp).get("tool_calls") else self._label(resp)
+        if _msg(resp).get("tool_calls"):
+            return self._tag(resp, "b_")
+        return self._label(resp, "none", "big-output path: no check and no verifier ran")
 
     @staticmethod
     def _compact_tools(tools: list[dict]) -> list[dict]:
@@ -252,13 +270,16 @@ class Duo:
         return out
 
     # ---- helpers ------------------------------------------------------------------------------
-    def _final(self, st: _State, template: dict | None, note: str) -> dict:
+    def _final(self, st: _State, template: dict | None, note: str,
+               state: str = "none", detail: str = "") -> dict:
         content = st.answer + (f"\n\n[{note}]" if note else "")
         resp = copy.deepcopy(template) if template else {"id": "duo", "object": "chat.completion", "choices": [
             {"index": 0, "finish_reason": "stop", "message": {"role": "assistant", "content": ""}}]}
         resp["choices"][0]["message"] = {"role": "assistant", "content": content}
         resp["choices"][0]["finish_reason"] = "stop"
-        return self._label(resp)
+        if st.plan_error:
+            detail = (f"{detail or note}; planner unavailable: {st.plan_error}").strip("; ")
+        return self._label(resp, state, detail or note)
 
     def _key(self, msgs: list[dict], tools: list[dict]) -> str:
         last_user = next((_text(m) for m in reversed(msgs) if m.get("role") == "user"), "")
@@ -328,12 +349,15 @@ class Duo:
         for tc in _msg(r).get("tool_calls") or []:
             tc["id"] = prefix + (_strip(tc.get("id")) or "")
         r["model"] = "duo"
+        r["localai_verification"] = {"state": "pending",
+                                     "detail": "tool calls returned; verification happens on the next request"}
         return r
 
     @staticmethod
-    def _label(resp: dict) -> dict:
+    def _label(resp: dict, state: str = "none", detail: str = "") -> dict:
         r = copy.deepcopy(resp)
         r["model"] = "duo"
+        r["localai_verification"] = {"state": state, "detail": detail}
         return r
 
 

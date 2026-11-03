@@ -215,4 +215,43 @@ by an opinion.
 Tests: 9 new cases in `tests/test_duo_mechanical.py`, including "a non-check tool is not a verdict",
 "a red exit code sends the executor back", "a green exit code skips the verifier" and the opt-out.
 
+## 2026-11-03 — every answer says how it was checked (and a correction)
+
+A `duo` answer used to look equally trustworthy whether it came from a verified loop or from the fast
+lane. Non-streaming answers now carry `localai_verification`:
+
+| `state` | Meaning |
+|---|---|
+| `mechanical` | a check tool reported success |
+| `llm` | a model approved it - an opinion, not evidence |
+| `none` | nothing was checked (fast lane, big-out, unreachable verifier/planner, rounds exhausted) |
+| `pending` | the answer is a tool call; verification continues on the next request |
+| `failed` | a check tool still reports a failure |
+
+### Correction to the earlier numbers in this log
+
+Writing that label exposed a real problem on this machine: the 27B planner/verifier cannot be loaded
+by the current Vulkan build any more (`gguf_init_from_reader: failed to read tensor info`), and `duo`
+**swallowed the error**, so a run that never planned looked exactly like one that did. Live proof
+before the fix:
+
+```
+state: none
+detail: verifier unreachable; planner unavailable: BackendError: bonsai-27b: backend exited with code 1
+```
+
+Consequences for this log, stated plainly:
+
+- The **tools-suite forced run (30.1 s, 18:19)** and the **forced-mode comparison (docs/duo-forced.json)**
+  happened before `bin/llama/llama-server.exe` vanished from this machine, so their planner/verifier
+  calls are real.
+- The **hard-suite forced run (18.5 s)** and the **code-suite duo runs (65.0 s / 73.1 s)** came after
+  it. Their numbers are executor work plus the mechanical check; the planner and the LLM verifier did
+  not contribute. The scores stand (the tests are the judge), but "the loop ran" does not.
+
+The failure is no longer silent: a planner that cannot be reached is named in `localai_verification`
+(`planner unavailable: …`). Making the 27B loadable again, or measuring a working planner/verifier
+substitute, is the next open item - not something this log pretends is solved.
+
+
 

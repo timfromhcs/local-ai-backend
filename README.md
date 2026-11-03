@@ -204,6 +204,21 @@ A lane can be demanded instead of hoped for: send `localai_mode: "fast" | "duo" 
 chat request, or `mode` with a bench run. Anything else is a structured `400 bad_mode`, and the
 field is stripped before forwarding, so no backend ever sees it.
 
+Every `duo` answer (non-streaming) carries `localai_verification` so a caller can tell evidence from
+opinion instead of trusting the prose:
+
+| `state` | Meaning |
+|---|---|
+| `mechanical` | a check tool (tests, lint, build) reported success |
+| `llm` | a model approved it - an opinion, not evidence |
+| `none` | nothing was checked: fast lane, big-output path, verifier unreachable, rounds exhausted |
+| `pending` | the answer is a tool call; verification continues on the next request |
+| `failed` | a check tool still reports a failure (returned instead of a confident answer) |
+
+When a check or a model is unreachable the detail names it, e.g.
+`verifier unreachable; planner unavailable: BackendError: ...` — hidden degradation was a real bug,
+not a hypothetical one.
+
 What the numbers actually say (`docs/bench-log.md`, measured on this laptop):
 
 | Suite | 4B alone | duo automatic | duo forced (`mode: "duo"`) |
