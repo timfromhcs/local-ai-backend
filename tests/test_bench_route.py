@@ -1,0 +1,104 @@
+"""POST /v1/bench: the same deterministic suite as the CLI, served by the gateway."""
+import json
+
+import httpx
+import pytest
+from fastapi.testclient import TestClient
+
+from localai_gateway.app import create_app
+from localai_gateway.config import Settings
+from localai_gateway.registry import ModelSpec
+
+ANSWERS = {
+    "planning, implementation and verification": "duo",
+    "Migrate three services": "bigout",
+    "List the files in": "list_files('C:/work')\nread_file('package.json')",
+    "Return only JSON": '{"model":"duo","loaded":true,"ram_mb":9000}',
+    "A model decodes 5.9 tokens": "3540",
+    "Can a browser run a 27B model": "No. It cannot hold the weights.",
+    "one sentence what a KV cache": "It stores attention keys and values so they are not recomputed.",
+}
+
+
+def _transport(request: httpx.Request) -> httpx.Response:
+    payload = json.loads(request.content)
+    prompt = payload["messages"][-1]["content"]
+    answer = next((v for k, v in ANSWERS.items() if k in prompt), "unknown")
+    return httpx.Response(200, json={
+        "id": "x", "model": payload["model"],
+        "choices": [{"index": 0, "message": {"role": "assistant", "content": answer}, "finish_reason": "stop"}],
+    })
+
+
+class _Scheduler:
+    def loaded(self):
+        return []
+
+    async def ensure_loaded(self, model_id):
+        return type("EP", (), {"base_url": "http://fake"})()
+
+    async def release(self, model_id):
+        return None
+
+
+def _client(registry, transport=_transport):
+    settings = Settings(budget_mb=5000, bin_dir=".", model_dir=".")
+    client = httpx.AsyncClient(transport=httpx.MockTransport(transport))
+    return TestClient(create_app(settings, registry, _Scheduler(), http_client=client))
+
+
+@pytest.fixture()
+def registry():
+    return {
+        "good": ModelSpec(id="good", kind="llm", files=[], runtime="llama", est_mem_mb=1000),
+        "gone": ModelSpec(id="gone", kind="llm", files=[], runtime="llama", est_mem_mb=1000,
+                          status="unavailable", reason="missing file"),
+        "img": ModelSpec(id="img", kind="image", files=[], runtime="sd", est_mem_mb=1000),
+    }
+
+
+def test_bench_scores_every_task(registry):
+    body = _client(registry).post("/v1/bench", json={"model": "good"}).json()
+    assert body["model"] == "good"
+    assert body["suite"] == "fast"
+    assert len(body["rows"]) == 7
+    assert body["score"] == 1.0, body
+    assert set(body["by_category"]) == {"routing", "tools", "format", "reasoning", "honesty"}
+
+
+def test_bench_rejects_unknown_suite_model_and_kind(registry):
+    c = _client(registry)
+    assert c.post("/v1/bench", json={"model": "good", "suite": "nope"}).json()["error"]["code"] == "unknown_suite"
+    assert c.post("/v1/bench", json={"model": "x"}).json()["error"]["code"] == "model_not_found"
+    r = c.post("/v1/bench", json={"model": "gone"})
+    assert r.status_code == 503 and r.json()["error"]["code"] == "model_unavailable"
+    r = c.post("/v1/bench", json={"model": "img"})
+    assert r.status_code == 400 and r.json()["error"]["code"] == "wrong_kind"
+
+
+def test_bench_without_model_field(registry):
+    r = _client(registry).post("/v1/bench", json={})
+    assert r.status_code == 422 and r.json()["error"]["code"] == "missing_model"
+
+
+def test_bench_reports_total_failure(registry):
+    def broken(request):
+        return httpx.Response(500, text="backend exploded")
+
+    r = _client(registry, broken).post("/v1/bench", json={"model": "good"})
+    assert r.status_code == 502
+    assert r.json()["error"]["code"] == "bench_failed"
+
+
+def test_bench_partial_failure_still_scores(registry):
+    calls = {"n": 0}
+
+    def flaky(request):
+        calls["n"] += 1
+        if calls["n"] % 2 == 0:
+            return httpx.Response(500, text="boom")
+        return _transport(request)
+
+    body = _client(registry, flaky).post("/v1/bench", json={"model": "good"}).json()
+    assert 0 < body["score"] < 1.0
+    assert any(row["error"] for row in body["rows"])

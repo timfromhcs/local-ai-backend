@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import time
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
 
@@ -14,6 +15,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from . import __version__
 
 from .adapters.llm import BackendError, forward_chat, iter_stream, open_stream
+from .benchscore import SUITES as BENCH_SUITES, BenchResult
 from .config import Settings, config_file
 from .doctor import report
 from .duo import Duo, DuoConfig, to_sse_chunks
@@ -103,7 +105,7 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
             return None, error(503, "backend_error", str(exc))
 
     async def call_model(model_id: str, body: dict) -> dict:
-        """Non-stream call used by Duo for each role; always releases."""
+        """Non-stream call used by Duo and the benchmark; always releases."""
         ep, err = await acquire(model_id)
         if err is not None:
             raise BackendError(f"{model_id}: {err.body.decode()[:200]}")
@@ -170,6 +172,55 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
             "required_kinds": list(result.required_kinds),
             "why": list(result.why),
         })
+
+    @app.post("/v1/bench")
+    async def bench(request: Request) -> JSONResponse:
+        """Run the deterministic fast/long suite against one model. Scoring has no LLM judge."""
+        try:
+            body = await request.json()
+        except ValueError:
+            return error(400, "bad_request", "body is not valid JSON")
+        model_id = body.get("model") if isinstance(body, dict) else None
+        if not model_id:
+            return error(422, "missing_model", "field 'model' is required")
+        suite = body.get("suite", "fast")
+        if suite not in BENCH_SUITES:
+            return error(400, "unknown_suite", f"suite must be one of {sorted(BENCH_SUITES)}")
+        spec = registry.get(model_id)
+        if spec is None:
+            return error(404, "model_not_found", f"unknown model {model_id!r}", valid_ids=sorted(registry))
+        if spec.status != "ready":
+            return error(503, "model_unavailable", spec.reason or spec.status)
+        if spec.kind != "llm":
+            return error(400, "wrong_kind", f"model {model_id!r} is a {spec.kind} model")
+
+        max_tokens = int(body.get("max_tokens", 400))
+        rows: list[dict] = []
+        for task in BENCH_SUITES[suite]:
+            started = time.perf_counter()
+            try:
+                resp = await call_model(model_id, {
+                    "model": model_id,
+                    "messages": [{"role": "user", "content": task.prompt}],
+                    "max_tokens": max_tokens,
+                    "temperature": 0,
+                })
+                msg = resp["choices"][0]["message"]
+                content = msg.get("content") or ""
+                if isinstance(content, list):
+                    content = " ".join(b.get("text", "") for b in content if isinstance(b, dict))
+                score, err = float(task.score(content)), None
+            except Exception as exc:  # one broken task must not kill the run
+                content, score, err = "", 0.0, f"{type(exc).__name__}: {exc}"[:300]
+            rows.append({
+                "id": task.id, "category": task.category, "weight": task.weight,
+                "score": score, "seconds": round(time.perf_counter() - started, 2),
+                "answer": content[:600], "error": err,
+            })
+
+        if all(r["error"] for r in rows):
+            return error(502, "bench_failed", "every task failed", first=rows[0]["error"])
+        return JSONResponse(BenchResult(model=model_id, suite=suite, rows=rows).as_dict())
 
     @app.get("/v1/autotune")
     async def autotune(model: str, ctx: int = 16384) -> JSONResponse:

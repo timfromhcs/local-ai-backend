@@ -147,6 +147,23 @@
         "summary": "Autotune"
       }
     },
+    "/v1/bench": {
+      "post": {
+        "description": "Run the deterministic fast/long suite against one model. Scoring has no LLM judge.",
+        "operationId": "bench_v1_bench_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Bench"
+      }
+    },
     "/v1/chat/completions": {
       "post": {
         "operationId": "chat_v1_chat_completions_post",
