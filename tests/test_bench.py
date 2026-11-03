@@ -1,10 +1,9 @@
 """Scorer contract: the benchmark must be deterministic and never call an LLM judge."""
 import json
 
-from bench.run import (
-    FAST,
-    LONG,
-    Run,
+from bench.run import FAST, LONG
+from localai_gateway.benchscore import (
+    BenchResult,
     score_json,
     score_number,
     score_one_sentence,
@@ -50,15 +49,15 @@ def test_patch_shape_requires_file_and_code():
     assert score_patch_shape("just rename it") == 0.0
 
 
-def test_run_aggregates_weighted_score_and_categories():
-    run = Run(model="m", suite="fast", started="now")
-    run.results = [
+def test_result_aggregates_weighted_score_and_categories():
+    result = BenchResult(model="m", suite="fast", rows=[
         {"id": "a", "category": "routing", "weight": 1.0, "score": 1.0},
         {"id": "b", "category": "routing", "weight": 1.0, "score": 0.0},
         {"id": "c", "category": "format", "weight": 1.0, "score": 1.0},
-    ]
-    assert run.score == 0.667
-    assert run.by_category() == {"routing": 0.5, "format": 1.0}
+    ])
+    assert result.score == 0.667
+    assert result.by_category() == {"routing": 0.5, "format": 1.0}
+    assert result.as_dict()["score"] == 0.667
 
 
 def test_suites_are_non_empty_and_have_unique_ids():

@@ -19,6 +19,7 @@ STABLE_PATHS = [
     "/doctor",
     "/v1/models",
     "/v1/chat/completions",
+    "/v1/bench",
     "/v1/placement",
     "/v1/autotune",
 ]
