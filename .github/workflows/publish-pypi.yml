@@ -38,7 +38,7 @@ jobs:
     permissions:
       id-token: write # OIDC, no token stored
     steps:
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
