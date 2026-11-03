@@ -34,7 +34,9 @@ endpoint and decides which model answers.
 - **Lazy loading** — no model is loaded until the first request.
 - **RAM budget** — a scheduler keeps the working set under a configured limit, evicts LRU.
 - **Refcounts** — a model is never stopped mid-stream, even if the client disconnects.
-- **`duo` virtual model** — big model plans and verifies, small model executes with tools.
+- **`duo` virtual model** - big model plans and verifies, small model executes with tools. A check
+  tool result (`run_tests`, `pytest`, `lint`) is authoritative: a red run sends the executor back with
+  the failure instead of accepting the verifier's `VERIFIED`, and a green run skips the verifier.
 - **SAT placement** — which models can be resident together, proven against brute force.
 - **Device autotune** — iGPU / dGPU / CPU profiles with a reason per flag.
 - **Prompt-prefix cache** — llama-server slot state persisted to SSD and restored at start.
@@ -238,7 +240,7 @@ packages/npm/          launcher that downloads and verifies the release binary
 servers/               localai-gateway-mcp
 packaging/             PyInstaller spec + entry point
 scripts/               build-exe, check-web, probes, bonsai-server
-tests/                 333 hermetic tests (gateway, scheduler, duo, modes, RSI, CORS,
+tests/                 345 hermetic tests (gateway, scheduler, duo, modes, RSI, CORS,
                        bench, placement, autotune, surfaces, release hygiene)
 docs/                  perf log, plans, design specs, inventory
 models.yaml            model registry (files, memory estimates, measured flags)
