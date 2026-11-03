@@ -1,11 +1,11 @@
 // Compare lanes on the HARD suite: tasks the 4B demonstrably fails.
-// 1) qwen3-4b alone  2) duo forced to plan/execute/verify
+// three lanes: the 4B alone, duo automatic (fast lane), duo forced (plan/execute/verify)
 import fs from "node:fs";
 
 const base = "http://127.0.0.1:8090";
 const runs = [];
 
-for (const [model, extra] of [["qwen3-4b", {}], ["duo", { mode: "duo" }]]) {
+for (const [model, extra] of [["qwen3-4b", {}], ["duo", {}], ["duo", { mode: "duo" }]]) {
   const started = Date.now();
   try {
     const res = await fetch(base + "/v1/bench", {
@@ -16,13 +16,13 @@ for (const [model, extra] of [["qwen3-4b", {}], ["duo", { mode: "duo" }]]) {
     });
     const body = await res.json();
     runs.push({
-      model, mode: extra.mode ?? "auto", status: res.status,
+      model, lane: extra.mode ?? (model === "duo" ? "auto" : "model"), status: res.status,
       score: body.score ?? null, seconds: +((Date.now() - started) / 1000).toFixed(1),
       rows: (body.rows ?? []).map((r) => ({ id: r.id, score: r.score, seconds: r.seconds, answer: (r.answer || "").slice(0, 200), error: r.error })),
       error: body.error ?? null,
     });
   } catch (e) {
-    runs.push({ model, mode: extra.mode ?? "auto", error: String(e).slice(0, 200), seconds: +((Date.now() - started) / 1000).toFixed(1) });
+    runs.push({ model, lane: extra.mode ?? (model === "duo" ? "auto" : "model"), error: String(e).slice(0, 200), seconds: +((Date.now() - started) / 1000).toFixed(1) });
   }
   console.log(JSON.stringify(runs.at(-1)).slice(0, 400));
 }
