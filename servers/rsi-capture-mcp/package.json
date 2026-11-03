@@ -1,0 +1,10 @@
+{
+  "name": "rsi-capture-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server that records verified agent work as training data through the gateway's /v1/rsi API",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2"
+  }
+}

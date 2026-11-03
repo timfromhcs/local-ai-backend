@@ -264,6 +264,108 @@
         },
         "summary": "Placement"
       }
+    },
+    "/v1/rsi/events": {
+      "post": {
+        "operationId": "rsi_event_v1_rsi_events_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Rsi Event"
+      }
+    },
+    "/v1/rsi/finalize": {
+      "post": {
+        "operationId": "rsi_finalize_v1_rsi_finalize_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Rsi Finalize"
+      }
+    },
+    "/v1/rsi/pairs": {
+      "get": {
+        "operationId": "rsi_pairs_v1_rsi_pairs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "session",
+            "required": true,
+            "schema": {
+              "title": "Session",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rsi Pairs"
+      }
+    },
+    "/v1/rsi/sessions": {
+      "post": {
+        "description": "Start (or resume) a capture session. Append-only JSONL, scrubbed on write.",
+        "operationId": "rsi_start_v1_rsi_sessions_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Rsi Start"
+      }
+    },
+    "/v1/rsi/stats": {
+      "get": {
+        "operationId": "rsi_stats_v1_rsi_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Rsi Stats"
+      }
     }
   }
 }
