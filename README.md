@@ -159,7 +159,6 @@ Errors are structured and stable: `model_not_found` (404), `model_unavailable` (
 plus `*.vercel.app` previews, never a wildcard.
 
 ## The web demo
-
 [`web/`](web/) is a static site (no build step) at
 **https://local-ai-backend-blue.vercel.app**:
 
@@ -172,6 +171,9 @@ plus `*.vercel.app` previews, never a wildcard.
   before/after. Real training of real weights - of a head, not of the LLM.
 - **SEO**: canonical, `hreflang` for EN/DE/FR, `SoftwareApplication` + `FAQPage` JSON-LD,
   `robots.txt`, `sitemap.xml` - all validated by `scripts/check-web.mjs`.
+- **Installable (PWA)**: a manifest with generated PNG icons and a service worker that precaches
+  the shell, so the page opens offline. Model weights and gateway calls are deliberately never
+  cached; verified against production by `scripts/verify-pwa-production.mjs`.
 - **EN / DE / FR** with 153 keys per locale, parity enforced by the web gate.
 
 ## Benchmark suite
