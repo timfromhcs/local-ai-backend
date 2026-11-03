@@ -77,8 +77,12 @@ the CPU hours; until then `--plan` is the honest output.
   clean machine.
 
 ### Phase D — 2027 runtime work (research, not promised)
-- Speculative decoding with the 0.5B drafter and a measured break-even check (the earlier
-  measurement says verify cost is not free on this iGPU: only keep it above 46 % acceptance).
+- ~~Speculative decoding with the 0.5B drafter and a measured break-even check~~ — **measured
+  2026-11-03, negative, and closed**: with Qwen2.5-Coder 1.5B + 0.5B drafter the acceptance was
+  57-58 % (above the earlier 46 % estimate) and decode still fell 40 % (63.8 → 38.5 tok/s), because
+  the draft and verify passes share the same 12 CUs. A vocab-mismatched pair (Qwen3-4B +
+  Qwen3.5-0.8B) is disabled at load, which earlier would have looked like "no speedup". Details in
+  `docs/perf-log.md`; speculation stays off in `models.yaml`.
 - OPFS + SQLite-WASM for durable per-user data beyond IndexedDB size limits.
 - PWA install for the phone path, with an offline shell and explicit model download sizes.
 - Gate: each item ships with a measured number or is deleted from the plan.
