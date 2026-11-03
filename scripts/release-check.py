@@ -60,6 +60,7 @@ CHECKS: list[Check] = [
     Check("self-test", [PY, "-m", "localai_gateway", "--self-test"]),
     Check("accessibility audit", ["node", "scripts/audit-web.mjs"], needs_browser=True),
     Check("pwa offline", ["node", "scripts/verify-pwa-offline.mjs"], needs_browser=True),
+    Check("local storage", ["node", "scripts/verify-storage.mjs"], needs_browser=True),
     Check("container smoke", ["docker", "build", "-f", "api/Dockerfile", "-t", "localai-release-check", "."],
           needs_container=True, detail="docker build"),
 ]

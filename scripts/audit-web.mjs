@@ -204,6 +204,11 @@ try {
       if (parseFloat(motion.duration) > 0 || motion.animation !== "none") note(`reduced-motion not honoured (${JSON.stringify(motion)})`);
       else ok("prefers-reduced-motion disables motion");
 
+      // console errors are not cosmetic: a broken module still renders half a page
+      const consoleErrors = [];
+      page.on("pageerror", (err) => consoleErrors.push(String(err).slice(0, 120)));
+      page.on("console", (msg) => { if (msg.type() === "error") consoleErrors.push(msg.text().slice(0, 120)); });
+
       // PWA: manifest reachable and a service worker actually registers
       const manifest = await page.evaluate(() => document.querySelector('link[rel="manifest"]')?.href ?? null);
       if (!manifest) note("no manifest link");
@@ -225,6 +230,9 @@ try {
       if (!sw.supported) note("service worker unsupported");
       else if (!sw.active) note("service worker did not activate");
       else ok(`service worker active (${sw.scope})`);
+
+      if (consoleErrors.length) note(`console errors: ${consoleErrors.slice(0, 3).join(" | ")}`);
+      else ok("no console errors or uncaught exceptions");
     }
     await page.close();
   }
