@@ -11,6 +11,7 @@ command is `--plan`; `--run` is opt-in and checkpoints every N steps.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from dataclasses import asdict, dataclass, field
@@ -62,11 +63,16 @@ class Dataset:
 
 
 def build_dataset(pattern: str) -> Dataset:
-    """Read *.pairs.jsonl files produced by rsi_lab.capture and keep only verified pairs."""
+    """Read *.pairs.jsonl files produced by rsi_lab.capture and keep only verified pairs.
+
+    Duplicates are dropped: a re-finalized session produces the same pair again, and training
+    twice on one episode silently over-weights it.
+    """
     rows: list[dict] = []
     tokens = 0
     sessions: list[str] = []
     skipped = 0
+    seen: set[str] = set()
     for path in sorted(glob(pattern)):
         try:
             lines = Path(path).read_text(encoding="utf8").splitlines()
@@ -86,6 +92,12 @@ def build_dataset(pattern: str) -> Dataset:
             if not pair.get("meta", {}).get("verified") or not messages:
                 skipped += 1
                 continue
+            first_user = next((m.get("content", "") for m in messages if m.get("role") == "user"), "")
+            key = hashlib.sha1(f"{pair.get('meta', {}).get('session_id')}|{first_user}".encode()).hexdigest()
+            if key in seen:
+                skipped += 1
+                continue
+            seen.add(key)
             rows.append({"messages": messages, "meta": pair.get("meta", {})})
             tokens += estimate_tokens(json.dumps(messages, ensure_ascii=False))
             sid = pair.get("meta", {}).get("session_id") or pair.get("session_id")
