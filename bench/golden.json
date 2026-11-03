@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "note": "Regression gate for the deterministic scorers. Update only with a deliberate scorer change; the test fails on any drift.",
+  "cases": [
+    { "id": "route-duo", "scorer": "route", "arg": "duo", "answer": "Duo.", "expected": 1.0 },
+    { "id": "route-duo-negative", "scorer": "route", "arg": "duo", "answer": "fast", "expected": 0.0 },
+    { "id": "route-bigout", "scorer": "route", "arg": "bigout", "answer": "bigout, because three services must stay green", "expected": 1.0 },
+    { "id": "tools-both", "scorer": "tool_call", "answer": "list_files('C:/work')\nread_file('package.json')", "expected": 1.0 },
+    { "id": "tools-one-missing", "scorer": "tool_call", "answer": "list_files('C:/work')", "expected": 0.0 },
+    { "id": "json-fenced", "scorer": "json", "answer": "```json\n{\"model\":\"duo\",\"loaded\":true,\"ram_mb\":9000}\n```", "expected": 1.0 },
+    { "id": "json-wrong-flag", "scorer": "json", "answer": "{\"model\":\"duo\",\"loaded\":false}", "expected": 0.0 },
+    { "id": "json-garbage", "scorer": "json", "answer": "not json at all", "expected": 0.0 },
+    { "id": "math-thousands", "scorer": "number", "arg": 3540, "answer": "3,540 tokens", "expected": 1.0 },
+    { "id": "math-wrong", "scorer": "number", "arg": 3540, "answer": "100", "expected": 0.0 },
+    { "id": "honesty-no", "scorer": "starts_no", "answer": "No. A browser cannot hold 27B weights.", "expected": 1.0 },
+    { "id": "honesty-yes", "scorer": "starts_no", "answer": "Yes, it can.", "expected": 0.0 },
+    { "id": "concise-one", "scorer": "one_sentence", "answer": "It stores attention keys and values so they are not recomputed.", "expected": 1.0 },
+    { "id": "concise-four", "scorer": "one_sentence", "answer": "One. Two. Three. Four.", "expected": 0.0 },
+    { "id": "patch-file-and-code", "scorer": "patch_shape", "answer": "server/app.py\n```python\nasync def f(): ...\n```", "expected": 1.0 },
+    { "id": "patch-prose-only", "scorer": "patch_shape", "answer": "just rename it", "expected": 0.0 }
+  ],
+  "baseline": { "case_count": 16, "sum_expected": 8.0 }
+}

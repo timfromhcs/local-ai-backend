@@ -53,9 +53,9 @@ def test_unverified_sessions_yield_nothing(client):
 def test_secrets_never_reach_the_capture_file(client, tmp_path):
     client.post("/v1/rsi/sessions", json={"session": "secret"})
     client.post("/v1/rsi/events", json={"session": "secret", "type": "user",
-                                        "content": "token ghp_abcdefghijklmnopqrstuvwxyz0123"})
+                                        "content": "token ghp_abcdefghijklmnopqrstuvwxyz0123"})  # secret-scan: allow (fake fixture)
     raw = (tmp_path / "rsi" / "captures" / "secret.jsonl").read_text(encoding="utf8")
-    assert "ghp_" not in raw
+    assert "ghp_" not in raw  # secret-scan: allow (fake fixture)
 
 
 def test_stats_and_error_cases(client):
