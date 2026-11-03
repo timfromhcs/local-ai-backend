@@ -5,16 +5,13 @@ import argparse
 import json
 import logging
 import os
-import platform
-import shutil
-import sys
 
 import httpx
-import psutil
 import uvicorn
 
 from .app import create_app
 from .config import PROJECT_ROOT, Settings, config_file
+from .doctor import render, report
 from .registry import load_registry
 from .scheduler import Scheduler
 from .supervisor import Supervisor
@@ -37,52 +34,13 @@ def build_app(settings: Settings | None = None):
     return settings, create_app(settings, registry, scheduler)
 
 
-def _gpus() -> list[str]:
-    """Best-effort GPU list. Never raises: the doctor must work on any machine."""
-    if platform.system() != "Windows":
-        return []
-    try:
-        import subprocess
-
-        raw = subprocess.check_output(
-            ["powershell", "-NoProfile", "-Command",
-             "Get-CimInstance Win32_VideoController | Select-Object Name,AdapterRAM | ConvertTo-Json -Compress"],
-            text=True, timeout=20,
-        )
-        data = json.loads(raw or "[]")
-        if isinstance(data, dict):
-            data = [data]
-        return [f"{g.get('Name', '?')} ({(g.get('AdapterRAM') or 0) / 2**20:.0f} MB)" for g in data]
-    except Exception:
-        return []
-
-
 def doctor() -> int:
     """Print what this machine can actually run. Exit 1 if no LLM is ready."""
     settings = Settings.default()
     registry = load_registry(config_file("models.yaml"), settings.model_dir)
-    gpus = _gpus()
-
-    print("localai-gateway doctor")
-    print(f"  python          : {sys.version.split()[0]} ({'frozen exe' if getattr(sys, 'frozen', False) else 'source'})")
-    print(f"  project root    : {PROJECT_ROOT}")
-    print(f"  models.yaml     : {config_file('models.yaml')}")
-    print(f"  ram             : {psutil.virtual_memory().total / 2**30:.1f} GB total, budget {settings.budget_mb} MB")
-    print(f"  cpu             : {platform.processor() or platform.machine()} ({psutil.cpu_count()} threads)")
-    for g in gpus:
-        print(f"  gpu             : {g}")
-    print(f"  llama-server    : {settings.bin_dir / 'llama' / 'llama-server.exe'} "
-          f"{'found' if (settings.bin_dir / 'llama' / 'llama-server.exe').exists() else 'MISSING'}")
-    print(f"  sd-server       : {settings.bin_dir / 'sd' / 'sd-server.exe'} "
-          f"{'found' if (settings.bin_dir / 'sd' / 'sd-server.exe').exists() else 'MISSING'}")
-    print("  models:")
-    ready = 0
-    for spec in registry.values():
-        mem = f"{spec.est_mem_mb} MB" if spec.est_mem_mb else "-"
-        print(f"    {spec.id:<18} {spec.kind:<8} {spec.status:<12} {mem:>9}  {spec.reason or ''}".rstrip())
-        ready += spec.status == "ready"
-    print(f"  ready models    : {ready}")
-    if ready == 0:
+    result = report(settings, registry, config_file("models.yaml"))
+    print(render(result))
+    if result.ready == 0:
         print("\nNo runnable model found. Put GGUF files next to this binary (see models.yaml) - "
               "the exe deliberately ships without model weights.")
         return 1

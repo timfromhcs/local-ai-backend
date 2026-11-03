@@ -11,8 +11,11 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from . import __version__
+
 from .adapters.llm import BackendError, forward_chat, iter_stream, open_stream
-from .config import Settings
+from .config import Settings, config_file
+from .doctor import report
 from .duo import Duo, DuoConfig, to_sse_chunks
 from .hardware import detect_device, profile_for
 from .modes import ModeController
@@ -128,9 +131,20 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
 
     duo = Duo(call_model, cfg, modes=ModeController(ask_jev))
 
+    @app.middleware("http")
+    async def version_header(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-LocalAI-Version"] = __version__
+        return response
+
     @app.get("/healthz")
     async def healthz() -> dict:
         return {"status": "ok"}
+
+    @app.get("/doctor")
+    async def doctor_route() -> JSONResponse:
+        """Same report as `localai-gateway --doctor`, as JSON."""
+        return JSONResponse(report(settings, registry, config_file("models.yaml")).as_dict())
 
     @app.get("/v1/models")
     async def models() -> dict:
