@@ -5,7 +5,11 @@ FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    # the gateway refuses non-loopback binds unless this is set; inside a container 0.0.0.0 is
+    # the only way to be reachable, and the port is published deliberately by the operator
+    LOCALAI_ALLOW_PUBLIC=1 \
+    LOCALAI_MAX_BODY_MB=8
 
 WORKDIR /app
 

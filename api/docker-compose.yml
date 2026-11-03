@@ -11,6 +11,8 @@ services:
       - "8090:8090"
     environment:
       LOCALAI_PORT: "8090"
+      LOCALAI_ALLOW_PUBLIC: "1"   # required inside the container; publish ports deliberately
+      LOCALAI_MAX_BODY_MB: "8"
       LOCALAI_CORS_ORIGINS: "http://localhost:4173,http://127.0.0.1:4173,http://localhost:3000"
     volumes:
       # read-only: the gateway reads models.yaml and starts host binaries only when

@@ -72,7 +72,14 @@ def main(argv: list[str] | None = None) -> None:
     settings, app = build_app()
     if args.port:
         settings.port = args.port
-    uvicorn.run(app, host=args.host, port=settings.port, log_level="info")
+    from .exposure import PublicBindRefused, resolve_host
+
+    try:
+        host = resolve_host(args.host)
+    except PublicBindRefused as exc:
+        print(f"error: {exc}", flush=True)
+        raise SystemExit(2) from None
+    uvicorn.run(app, host=host, port=settings.port, log_level="info")
 
 
 if __name__ == "__main__":

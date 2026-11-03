@@ -16,8 +16,10 @@ In scope:
 
 Out of scope, because it is the design:
 
-- **No authentication.** The gateway is meant to be reachable only from the local machine. If you
-  expose it, put an authenticating proxy in front of it; that is your responsibility, not a bug.
+- **No authentication.** The gateway is meant to be reachable only from the local machine. It
+  **refuses to bind a non-loopback address** unless `LOCALAI_ALLOW_PUBLIC=1` is set, and rejects
+  request bodies above `LOCALAI_MAX_BODY_MB` (default 8 MB, `413 payload_too_large`). If you expose
+  it anyway, put an authenticating proxy in front of it; that is your responsibility, not a bug.
 - **Model output quality.** A 4B model giving a wrong answer is a limitation, not a vulnerability.
 - **The unsigned EXE.** Windows SmartScreen warns by design; a code-signing certificate is not
   configured yet and is documented in the README.
