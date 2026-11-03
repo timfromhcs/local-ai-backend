@@ -6,7 +6,7 @@
 
 <p align="center">
   One OpenAI-compatible endpoint in front of the models already on your disk.<br />
-  Lazy loading, a RAM budget, a plan/execute/verify <code>duo</code> model, and honest numbers.
+  Lazy loading, a RAM budget, SAT-based placement, device-aware autotuning, and honest numbers.
 </p>
 
 <p align="center">
@@ -18,9 +18,9 @@
 </p>
 
 <p align="center">
-  <a href="https://local-ai-backend-blue.vercel.app"><b>Live demo</b></a> Â·
-  <a href="docs/perf-log.md">Performance log</a> Â·
-  <a href="docs/superpowers/plans/2026-11-03-v0.2.0-stable.md">Release plan</a>
+  <a href="https://local-ai-backend-blue.vercel.app"><b>Live demo</b></a> ·
+  <a href="docs/perf-log.md">Performance log</a> ·
+  <a href="docs/superpowers/plans/2026-11-08-v2.0-surfaces.md">v2.0 plan</a>
 </p>
 
 ---
@@ -28,17 +28,17 @@
 ## What this is
 
 A local gateway for GGUF models on Windows (Vulkan), written to be measured rather than
-marketed. It gives your editor, scripts and MCP servers a single
-`http://127.0.0.1:8090/v1` endpoint, and decides for you which model answers.
+marketed. It gives editors, scripts and MCP clients a single `http://127.0.0.1:8090/v1`
+endpoint and decides which model answers.
 
-- **Lazy loading** â€” no model is loaded until the first request.
-- **RAM budget** â€” a scheduler keeps the working set under a configurable limit and evicts
-  the least recently used model.
-- **Refcounts** â€” a model is never stopped mid-stream, even if the client disconnects.
-- **`duo` virtual model** â€” the big model plans and verifies, the small model executes with
-  tools, errors escalate deterministically instead of looping.
-- **Prompt-prefix cache** â€” llama-server slot state is persisted to SSD and restored at start.
-- **Single-file EXE** â€” the gateway ships without model weights, on purpose.
+- **Lazy loading** — no model is loaded until the first request.
+- **RAM budget** — a scheduler keeps the working set under a configured limit, evicts LRU.
+- **Refcounts** — a model is never stopped mid-stream, even if the client disconnects.
+- **`duo` virtual model** — big model plans and verifies, small model executes with tools.
+- **SAT placement** — which models can be resident together, proven against brute force.
+- **Device autotune** — iGPU / dGPU / CPU profiles with a reason per flag.
+- **Prompt-prefix cache** — llama-server slot state persisted to SSD and restored at start.
+- **Single-file EXE** — the gateway ships without model weights, on purpose.
 
 ## Quick start
 
@@ -79,30 +79,42 @@ Or download the built binary from
 ```powershell
 gh release download v0.3.0 -p localai-gateway.exe -p SHA256SUMS.txt
 Get-FileHash .\localai-gateway.exe -Algorithm SHA256   # compare with SHA256SUMS.txt
-.\localai-gateway.exe --version                        # 0.3.0
+.\localai-gateway.exe --version
 ```
 
-The EXE is unsigned, so Windows SmartScreen warns on first run ("More info â†’ Run anyway").
-That is stated here instead of hidden; a code-signing certificate is not configured yet.
+The EXE is unsigned, so Windows SmartScreen warns on first run ("More info -> Run anyway").
+That is stated here instead of hidden; no code-signing certificate is configured yet.
 
 ## Surfaces
 
 | Surface | What runs there | Limit |
 |---|---|---|
-| Windows EXE / wheel | the gateway + llama-server (Vulkan) | needs your GGUF files |
-| Docker (`api/Dockerfile`, `ghcr.io/timfromhcs/local-ai-backend`) | the gateway API/MCP | no GPU, no weights in the image |
-| Vercel (static `web/`) | ONNX tier, **GGUF via WASM (wllama)**, lab | browser memory only |
-| Phone browser | same page, responsive 320â†’2560 px | â‰¤ 1.5B q4 realistically |
-| MCP (`servers/localai-gateway-mcp`) | status, models, chat, benchmark, doctor | talks to a running gateway |
+| Windows EXE / wheel | gateway + llama-server (Vulkan) | needs your GGUF files |
+| Docker (`api/Dockerfile`, `ghcr.io/timfromhcs/local-ai-backend`) | gateway API + MCP | no GPU, no weights in the image |
+| Vercel static `web/` | ONNX tier, GGUF via WASM (wllama), lab | browser memory only |
+| Phone browser | same page, 320-2560 px, IndexedDB persistence | <= 1.5B q4 realistically |
+| MCP `servers/localai-gateway-mcp` | status, models, chat, benchmark, doctor, placement, autotune | talks to a running gateway |
 
-Python source instead of the exe:
+### Planning and autotuning
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\pip install -e .[dev]
-.\.venv\Scripts\python -m localai_gateway --doctor
-.\.venv\Scripts\python -m localai_gateway --port 8090
+# which models fit in RAM at the same time? (SAT solver, deterministic)
+curl http://127.0.0.1:8090/v1/placement
+curl "http://127.0.0.1:8090/v1/placement?budget_mb=8000&kinds=llm&pinned=jev-1.5b"
+
+# device-aware llama.cpp flags, one reason per flag
+curl "http://127.0.0.1:8090/v1/autotune?model=qwen3-4b&ctx=16384"
 ```
+
+`placement` maximises the number of resident models under the budget, then uses as much of the
+budget as possible. The objective and the cardinality encoding are cross-checked against brute
+force on thousands of random instances. `autotune` distinguishes iGPU (shared memory), dGPU
+(discrete VRAM) and CPU-only, and never promises kernel switches that measured as neutral here.
+
+### Your data stays local
+
+The web demo writes settings, the selected model and benchmark runs into **IndexedDB**, with
+JSON export/import and a delete button. No analytics, no upload, no account.
 
 ## Measured, not estimated
 
@@ -112,50 +124,50 @@ llama.cpp Vulkan build. Full table and rejected experiments: [`docs/perf-log.md`
 | Metric | Value | Notes |
 |---|---|---|
 | Bonsai 2 27B q4 decode | **5.9 tok/s** | 88 GB/s theoretical RAM bandwidth is the wall |
-| Same model, prefill | **~32 tok/s** | â‰ˆ50 % of FP32 peak; `-ub 256` won the sweep |
+| Same model, prefill | **~32 tok/s** | about 50 % of FP32 peak; `-ub 256` won the sweep |
 | OpenCode prompt, 16.2k tokens | **0.8 s** prompt phase, 5.0 s total | cached prefix reused |
-| Same prompt, cold | **70â€“190 s** | why prefix caching is the biggest lever |
+| Same prompt, cold | **70-190 s** | why prefix caching is the biggest lever |
 | Qwen3 4B q4 | **22.6 tok/s** | executor in the duo loop |
 | Qwen2.5 Coder 1.5B q4 | **55.7 tok/s** | System-1 router |
-| Unit tests | **154 passed** | `pytest -m "not real"`, no model downloads |
+| Tests | **180 passed** | `pytest -m "not real"`, no model downloads |
 
-What is **not** possible here: 50â€“100 tok/s on a 27B model (needs ~410â€“820 GB/s), matrix-core
-speedups (RDNA2 has none), or ROCm being faster (measured ~6Ã— slower than Vulkan on this APU).
-The gateway makes the model you have usable; it does not invent bandwidth.
+Not possible here: 50-100 tok/s on a 27B model (needs 410-820 GB/s), matrix-core speedups
+(RDNA2 has none), or ROCm being faster (measured about 6x slower than Vulkan on this APU).
 
 ## Architecture
 
 ```
 client (editor / script / MCP)
-        â”‚  OpenAI chat.completions
-        â–¼
-   gateway app  â”€â”€â–º mode controller â”€â”€â–º fast | duo | big-out
-        â”‚                                   â”‚
-        â–¼                                   â–¼
-   scheduler: RAM budget Â· LRU Â· refcount  Jev :8080 (1.5B classifier)
-        â”‚
-        â–¼
-   llama-server per model (:18xxx)  â”€â”€â–º slot state on SSD (prompt prefix)
+        |  OpenAI chat.completions
+        v
+   gateway app  --> mode controller --> fast | duo | big-out
+        |                                  |
+        v                                  v
+   scheduler: RAM budget, LRU, refcount   Jev :8080 (1.5B classifier)
+        |
+        v
+   llama-server per model (:18xxx)  --> slot state on SSD (prompt prefix)
 ```
 
 Errors are structured and stable: `model_not_found` (404), `model_unavailable` (503),
-`does_not_fit` (503), `backend_error` (503). CORS allows explicit origins plus
-`*.vercel.app` previews â€” never a wildcard.
+`does_not_fit` (503), `no_placement` (409), `backend_error` (503). CORS allows explicit origins
+plus `*.vercel.app` previews, never a wildcard.
 
 ## The web demo
 
-[`web/`](web/) is a static site (no build step) deployed at
+[`web/`](web/) is a static site (no build step) at
 **https://local-ai-backend-blue.vercel.app**:
 
-- **Path A â€” ONNX (WebGPU/WASM)**: a small ONNX model runs in the tab via Transformers.js.
-- **Path C â€” GGUF (WASM)**: llama.cpp compiled to WebAssembly through **wllama**, loading real
-  GGUF files (LFM2.5 350M, Qwen2.5 0.5B/1.5B, SmolLM2 360M) straight from Hugging Face. Same
-  format as the local gateway, no server in the loop, cached in the browser. Single-threaded
-  without COOP/COEP, which is why 0.5B is the honest sweet spot.
-- **Path B â€” your local gateway**: connects to `http://127.0.0.1:8090`; the CORS contract is tested.
-- **Lab**: trains a real softmax head on frozen ONNX embeddings (teacher-labelled routes) with SGD
-  and reports accuracy before/after. Real training of real weights â€” of a head, not of the LLM.
-- **EN / DE / FR**, no framework, responsive from 320 px, 8 sections of long-form documentation.
+- **Path A - ONNX (WebGPU/WASM)**: a small ONNX model runs in the tab via Transformers.js.
+- **Path C - GGUF (WASM)**: llama.cpp compiled to WebAssembly through wllama, loading real GGUF
+  files (LFM2.5 350M, Qwen2.5 0.5B/1.5B, SmolLM2 360M) from Hugging Face. Same format as the
+  local gateway, no server, cached in the browser. Single-threaded without COOP/COEP.
+- **Path B - your local gateway**: connects to `http://127.0.0.1:8090`; CORS is tested.
+- **Lab**: trains a real softmax head on frozen ONNX embeddings with SGD and reports accuracy
+  before/after. Real training of real weights - of a head, not of the LLM.
+- **SEO**: canonical, `hreflang` for EN/DE/FR, `SoftwareApplication` + `FAQPage` JSON-LD,
+  `robots.txt`, `sitemap.xml` - all validated by `scripts/check-web.mjs`.
+- **EN / DE / FR** with 153 keys per locale, parity enforced by the web gate.
 
 ## Benchmark suite
 
@@ -167,42 +179,29 @@ python -m bench.run --gateway http://127.0.0.1:8090 --model qwen3-4b --suite lon
 Scoring is deterministic Python (routing words, tool-call shape, strict JSON, arithmetic,
 honesty, concision, patch shape). No LLM judge, so results are cheap and repeatable.
 
-## MCP stack (14 local servers)
+## MCP stack
 
-The gateway is the model layer; the MCP layer is the agent's hands. All of it is local and
-verified by a boot-time probe:
-
-| Server | Tools | Role |
-|---|---|---|
-| github | 91 | repos, PRs, issues, actions |
-| vercel | 241 | deployments, domains, logs |
-| better-design | 45 | design systems, UI review |
-| chrome-devtools | 32 | fast CDP browser, traces, console |
-| playwright | 25 | E2E, DOM inspection |
-| system-one-jev | 21 | fast decisions, routing |
-| knowledge-db (Chroma) | 13 | local vector DB, seeded best practices |
-| basic-memory | 12 | durable markdown knowledge base |
-| memory | 9 | knowledge graph |
-| blender | 9 | 3D, needs Blender running |
-| local-crawl | 6 | local crawler: HTTP fast path â†’ local Chromium, disk cache, robots.txt |
-| ast-grep | 4 | structural search |
-| context7 | 2 | library docs |
-| fetch | 1 | single-page fetch |
-
-Pinned installs (`~/.config/opencode/mcp`), absolute paths, `mcp-bootstrap.ps1` for repair,
-`mcp-health.ps1` for a real `initialize` + `tools/list` probe, and Windows scheduled tasks
-(`OpenCodeMCPHealth`, `OpenCodeJevGuard`) so a reboot cannot silently break the stack.
+14 local servers plus the gateway's own MCP, all verified by a boot-time probe with real
+`initialize` + `tools/list` handshakes. Highlights: github (91 tools), vercel (241),
+better-design (45), chrome-devtools (32), playwright (25), system-one-jev (21),
+knowledge-db/Chroma (13, seeded best practices), basic-memory (12), local-crawl (6),
+localai-gateway (7), blender, memory, ast-grep, context7, fetch.
 
 ## Repository layout
 
 ```
-src/localai_gateway/   gateway app, scheduler, supervisor, duo orchestration, modes, warmup
+src/localai_gateway/   gateway, scheduler, supervisor, duo, modes, warmup,
+                       placement (SAT), hardware (autotune), config
 src/rsi_lab/           trajectory scrub/harvest/clean/split + promotion gate
 bench/                 deterministic benchmark suite (fast + long)
-web/                   static ONNX/WebGPU demo, EN/DE/FR, lab
+web/                   static ONNX/GGUF/WASM demo, EN/DE/FR, lab, IndexedDB, SEO files
+api/                   Dockerfile + compose (API shell, no weights)
+packages/npm/          launcher that downloads and verifies the release binary
+servers/               localai-gateway-mcp
 packaging/             PyInstaller spec + entry point
-scripts/               build-exe.ps1, bonsai-server.ps1, prefix capture
-tests/                 154 hermetic tests (gateway, scheduler, duo, modes, RSI, CORS, bench, docker/npm/mcp surfaces)
+scripts/               build-exe, check-web, probes, bonsai-server
+tests/                 180 hermetic tests (gateway, scheduler, duo, modes, RSI, CORS,
+                       bench, placement, autotune, surfaces, release hygiene)
 docs/                  perf log, plans, design specs, inventory
 models.yaml            model registry (files, memory estimates, measured flags)
 ```
@@ -214,20 +213,19 @@ git-ignored and never committed.
 
 - A 4B model does not reason like a frontier model. `duo` improves tool-call reliability, not
   intelligence.
-- No browser can run a 27B model. The web demo is a demo, not a substitute for the gateway.
+- Vercel containers have no GPU: they serve the API/MCP shell, not the 27B model.
+- No browser runs a 27B model. The web demo is a demo, not a substitute for the gateway.
 - Fine-tuning here means LoRA on CPU for small models; there is no CUDA and no bitsandbytes.
-- The RSI lab (chat â†’ training pairs â†’ gated promotion) is partially built. The plan documents
-  exactly which parts exist and which do not.
+- The placement solver targets small instances; Kissat-WASM is the documented upgrade.
 - `lance-video` and `slat-3d` are registered as **unsupported** with their real loader errors.
 
 ## Roadmap
 
-See [`docs/superpowers/plans/2026-11-03-mcp-stack-and-release.md`](docs/superpowers/plans/2026-11-03-mcp-stack-and-release.md):
-RSI capture MCP, LoRA distillation into the 1.5B router with a promotion gate, tiny
-text-diffusion experiments on the iGPU, and a Docker SWE runner for verified episodes.
+See [`docs/superpowers/plans/2026-11-08-v2.0-surfaces.md`](docs/superpowers/plans/2026-11-08-v2.0-surfaces.md):
+closed API contract with OpenAPI snapshots, publishing tokens for npm/PyPI, real-device mobile
+pass, RSI capture MCP, and two consecutive green releases before the v1.0 tag.
 
 ## Licence
 
 Code: MIT. Model weights are **not** included and keep their own licences. The demo page and
 its assets are part of this repository.
-

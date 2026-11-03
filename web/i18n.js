@@ -37,6 +37,10 @@
     'demo.connectFirst': 'Connect to the gateway first.', 'demo.model': 'Model',
     'demo.noteB': 'The gateway allows this origin through CORS and nothing else. If the browser blocks the call, serve the page over http://localhost (not file://) or add your origin to LOCALAI_CORS_ORIGINS.',
 
+    'data.local': 'Your data stays in this browser. Nothing is uploaded.',
+    'data.export': 'Export JSON', 'data.import': 'Import JSON', 'data.clear': 'Delete all',
+    'data.exported': 'Export ready - check your downloads.', 'data.imported': 'Import applied.',
+    'data.importFailed': 'Import failed', 'data.cleared': 'All local data deleted.',
     'lab.title': 'Teacher → student, trained in this tab',
     'lab.sub': 'A frozen ONNX encoder turns each task into a 384-dimension vector. A teacher labels the route (fast / duo / bigout). A softmax head is then trained here with SGD and measured on held-out tasks before and after. That is real training of real weights — of a head, not of the LLM.',
     'lab.run': 'Train head & benchmark', 'lab.download': 'Download results (JSON)',
@@ -147,6 +151,10 @@
     'demo.connectFirst': 'Verbinde dich zuerst mit dem Gateway.', 'demo.model': 'Modell',
     'demo.noteB': 'Das Gateway erlaubt genau diesen Origin per CORS. Wenn der Browser blockt, liefere die Seite über http://localhost aus (nicht file://) oder ergänze deinen Origin in LOCALAI_CORS_ORIGINS.',
 
+    'data.local': 'Deine Daten bleiben in diesem Browser. Nichts wird hochgeladen.',
+    'data.export': 'JSON exportieren', 'data.import': 'JSON importieren', 'data.clear': 'Alles löschen',
+    'data.exported': 'Export bereit - siehe Downloads.', 'data.imported': 'Import übernommen.',
+    'data.importFailed': 'Import fehlgeschlagen', 'data.cleared': 'Alle lokalen Daten gelöscht.',
     'lab.title': 'Teacher → Student, direkt in diesem Tab trainiert',
     'lab.sub': 'Ein eingefrorener ONNX-Encoder macht aus jeder Aufgabe einen 384-dimensionalen Vektor. Ein Teacher vergibt das Label (fast / duo / bigout). Danach wird hier per SGD ein Softmax-Head trainiert und auf zurückgehaltenen Aufgaben vorher/nachher gemessen. Das ist echtes Training echter Gewichte — eines Heads, nicht des LLM.',
     'lab.run': 'Head trainieren & benchmarken', 'lab.download': 'Ergebnisse herunterladen (JSON)',
@@ -257,6 +265,10 @@
     'demo.connectFirst': 'Connectez d’abord la passerelle.', 'demo.model': 'Modèle',
     'demo.noteB': 'La passerelle autorise cette origine via CORS et rien d’autre. Si le navigateur bloque, servez la page via http://localhost (pas file://) ou ajoutez votre origine à LOCALAI_CORS_ORIGINS.',
 
+    'data.local': 'Vos données restent dans ce navigateur. Rien n’est envoyé.',
+    'data.export': 'Exporter JSON', 'data.import': 'Importer JSON', 'data.clear': 'Tout supprimer',
+    'data.exported': 'Export prêt - voir les téléchargements.', 'data.imported': 'Import appliqué.',
+    'data.importFailed': 'Échec de l’import', 'data.cleared': 'Toutes les données locales supprimées.',
     'lab.title': 'Enseignant → élève, entraîné dans cet onglet',
     'lab.sub': 'Un encodeur ONNX gelé transforme chaque tâche en vecteur de 384 dimensions. Un enseignant attribue la route (fast / duo / bigout). Une tête softmax est ensuite entraînée ici par SGD et mesurée sur des tâches de test avant et après. C’est un vrai entraînement de vrais poids — d’une tête, pas du LLM.',
     'lab.run': 'Entraîner la tête et mesurer', 'lab.download': 'Télécharger les résultats (JSON)',

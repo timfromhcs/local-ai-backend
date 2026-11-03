@@ -14,7 +14,9 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from .adapters.llm import BackendError, forward_chat, iter_stream, open_stream
 from .config import Settings
 from .duo import Duo, DuoConfig, to_sse_chunks
+from .hardware import detect_device, profile_for
 from .modes import ModeController
+from .placement import Unsatisfiable, solve_placement
 from .registry import ModelSpec
 from .scheduler import DoesNotFit, ModelUnavailable
 from .warmup import normalize_for_cache
@@ -136,6 +138,35 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
         return {"object": "list", "data": [
             {"id": s.id, "object": "model", "kind": s.kind, "status": s.status, "reason": s.reason,
              "runtime": s.runtime, "loaded": s.id in loaded} for s in registry.values()]}
+
+    @app.get("/v1/placement")
+    async def placement(budget_mb: int | None = None, kinds: str = "llm", pinned: str = "") -> JSONResponse:
+        """SAT-based answer to "which models fit in RAM at the same time"."""
+        budget = budget_mb or settings.budget_mb
+        required = tuple(k.strip() for k in kinds.split(",") if k.strip()) or ("llm",)
+        pins = tuple(p.strip() for p in pinned.split(",") if p.strip())
+        try:
+            result = solve_placement(registry, budget_mb=budget, required_kinds=required, pinned=pins)
+        except Unsatisfiable as exc:
+            return error(409, "no_placement", str(exc), budget_mb=budget, kinds=list(required))
+        return JSONResponse({
+            "models": list(result.models),
+            "memory_mb": result.memory_mb,
+            "budget_mb": budget,
+            "required_kinds": list(result.required_kinds),
+            "why": list(result.why),
+        })
+
+    @app.get("/v1/autotune")
+    async def autotune(model: str, ctx: int = 16384) -> JSONResponse:
+        """Device-aware llama.cpp flags for one registered model."""
+        spec = registry.get(model)
+        if spec is None:
+            return error(404, "model_not_found", f"unknown model {model!r}", valid_ids=sorted(registry))
+        if spec.est_mem_mb <= 0:
+            return error(422, "no_memory_estimate", f"{model!r} has no est_mem_mb, cannot autotune")
+        profile = profile_for(detect_device(), spec.est_mem_mb, ctx=ctx)
+        return JSONResponse(profile.as_dict())
 
     @app.post("/v1/chat/completions")
     async def chat(request: Request):

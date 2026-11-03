@@ -30,7 +30,7 @@ try {
   const names = tools.map((t) => t.name).sort();
   console.log(`connected: ${names.join(", ")}`);
 
-  const expected = ["benchmark", "chat", "doctor", "gateway_status", "list_models"];
+  const expected = ["autotune", "benchmark", "chat", "doctor", "gateway_status", "list_models", "placement"];
   const missing = expected.filter((n) => !names.includes(n));
   if (missing.length) throw new Error(`missing tools: ${missing.join(", ")}`);
 

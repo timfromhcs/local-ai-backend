@@ -512,5 +512,145 @@ $('#form-gguf').addEventListener('submit', async (ev) => {
   }
 });
 
+/* ------------------------------------------------- local-first user data
+   IndexedDB when available, localStorage as fallback. Nothing is uploaded;
+   the export/import pair is how a user moves machines without an account. */
+const DB_NAME = 'localai';
+const DB_STORE = 'kv';
+
+const store = {
+  db: null,
+  async open() {
+    if (this.db) return this.db;
+    if (!('indexedDB' in window)) return null;
+    this.db = await new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return this.db;
+  },
+  async set(key, value) {
+    try {
+      const db = await this.open();
+      if (!db) { localStorage.setItem(`localai.${key}`, JSON.stringify(value)); return; }
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(DB_STORE, 'readwrite');
+        tx.objectStore(DB_STORE).put(value, key);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch { /* private mode: stay silent, the page still works */ }
+  },
+  async get(key, fallback = null) {
+    try {
+      const db = await this.open();
+      if (!db) {
+        const raw = localStorage.getItem(`localai.${key}`);
+        return raw ? JSON.parse(raw) : fallback;
+      }
+      return await new Promise((resolve) => {
+        const tx = db.transaction(DB_STORE, 'readonly');
+        const req = tx.objectStore(DB_STORE).get(key);
+        req.onsuccess = () => resolve(req.result ?? fallback);
+        req.onerror = () => resolve(fallback);
+      });
+    } catch { return fallback; }
+  },
+  async all() {
+    const db = await this.open();
+    if (!db) {
+      return Object.fromEntries(Object.keys(localStorage)
+        .filter((k) => k.startsWith('localai.'))
+        .map((k) => [k.slice(8), JSON.parse(localStorage.getItem(k))]));
+    }
+    return new Promise((resolve) => {
+      const out = {};
+      const tx = db.transaction(DB_STORE, 'readonly');
+      const req = tx.objectStore(DB_STORE).openCursor();
+      req.onsuccess = () => {
+        const cur = req.result;
+        if (cur) { out[cur.key] = cur.value; cur.continue(); } else resolve(out);
+      };
+      req.onerror = () => resolve(out);
+    });
+  },
+  async clear() {
+    const db = await this.open();
+    if (db) {
+      await new Promise((resolve) => {
+        const tx = db.transaction(DB_STORE, 'readwrite');
+        tx.objectStore(DB_STORE).clear();
+        tx.oncomplete = resolve;
+      });
+    }
+    for (const k of Object.keys(localStorage)) if (k.startsWith('localai.')) localStorage.removeItem(k);
+  },
+};
+
+async function restorePrefs() {
+  const saved = await store.get('prefs', null);
+  if (!saved) return;
+  if (saved.tier && $('#tier')) $('#tier').value = saved.tier;
+  if (saved.gguf && $('#gguf-model')) $('#gguf-model').value = saved.gguf;
+  if (saved.base && $('#base')) $('#base').value = saved.base;
+  if (saved.lab) state.lab = saved.lab;
+}
+
+async function rememberPrefs() {
+  await store.set('prefs', {
+    tier: $('#tier')?.value,
+    gguf: $('#gguf-model')?.value,
+    base: $('#base')?.value,
+    savedAt: new Date().toISOString(),
+  });
+}
+
+function dataStatus(text, kind = '') {
+  const el = $('#data-status');
+  el.textContent = text;
+  el.className = `status ${kind}`;
+}
+
+$('#export-data').addEventListener('click', async () => {
+  const payload = { kind: 'localai-export', version: 1, createdAt: new Date().toISOString(), data: await store.all() };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'localai-data.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  dataStatus(t('data.exported'), 'good');
+});
+
+$('#import-data').addEventListener('click', () => $('#import-file').click());
+
+$('#import-file').addEventListener('change', async (ev) => {
+  const file = ev.target.files?.[0];
+  if (!file) return;
+  try {
+    const parsed = JSON.parse(await file.text());
+    if (parsed?.kind !== 'localai-export' || typeof parsed.data !== 'object') throw new Error('wrong file');
+    for (const [key, value] of Object.entries(parsed.data)) await store.set(key, value);
+    await restorePrefs();
+    dataStatus(t('data.imported'), 'good');
+  } catch (e) {
+    dataStatus(`${t('data.importFailed')}: ${e.message}`, 'bad');
+  } finally {
+    ev.target.value = '';
+  }
+});
+
+$('#clear-data').addEventListener('click', async () => {
+  await store.clear();
+  dataStatus(t('data.cleared'), 'good');
+});
+
+for (const id of ['#tier', '#gguf-model', '#base']) {
+  $(id)?.addEventListener('change', rememberPrefs);
+}
+
 /* ------------------------------------------------------------------ boot */
+restorePrefs();
 detectHardware();

@@ -115,6 +115,27 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       description: "Explain the current state: how many models are ready, unavailable or unsupported, and why.",
       inputSchema: { type: "object", properties: {} },
     },
+    {
+      name: "placement",
+      description: "Ask the gateway which models fit in RAM at the same time (SAT solver). Optional budget, kinds, pinned models.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          budget_mb: { type: "integer", description: "Defaults to the gateway's own budget" },
+          kinds: { type: "string", description: "Comma list, default llm" },
+          pinned: { type: "string", description: "Comma list of models that must be included" },
+        },
+      },
+    },
+    {
+      name: "autotune",
+      description: "Device-aware llama.cpp flags for one model (iGPU UMA / dGPU / CPU), with a reason per flag.",
+      inputSchema: {
+        type: "object",
+        properties: { model: { type: "string" }, ctx: { type: "integer", description: "Default 16384" } },
+        required: ["model"],
+      },
+    },
   ],
 }));
 
@@ -170,8 +191,19 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       const total = rows.reduce((a, r) => a + r.score, 0);
       return text({ model: args.model, score: `${total}/${rows.length}`, rows });
     }
-    if (name === "doctor") {
-      const models = await get("/v1/models");
+    if (name === "placement") {
+      const q = new URLSearchParams();
+      if (args.budget_mb) q.set("budget_mb", String(args.budget_mb));
+      if (args.kinds) q.set("kinds", args.kinds);
+      if (args.pinned) q.set("pinned", args.pinned);
+      return text(await get(`/v1/placement${q.toString() ? `?${q}` : ""}`));
+    }
+    if (name === "autotune") {
+      const q = new URLSearchParams({ model: args.model });
+      if (args.ctx) q.set("ctx", String(args.ctx));
+      return text(await get(`/v1/autotune?${q}`));
+    }
+    if (name === "doctor") {      const models = await get("/v1/models");
       const by = (s) => models.data.filter((m) => m.status === s);
       return text({
         gateway: BASE,
