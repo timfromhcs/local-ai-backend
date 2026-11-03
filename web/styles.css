@@ -49,8 +49,8 @@ p { margin: 0 0 1rem; }
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
 }
-.head-inner { display: flex; align-items: center; gap: 1.2rem; min-height: 64px; }
-.brand { display: flex; align-items: center; gap: .55rem; font-weight: 600; color: var(--text); letter-spacing: -.01em; }
+.head-inner { display: flex; align-items: center; gap: 1.2rem; min-height: 64px; flex-wrap: wrap; row-gap: .5rem; }
+.brand { display: flex; align-items: center; gap: .55rem; font-weight: 600; color: var(--text); letter-spacing: -.01em; min-width: 0; white-space: nowrap; }
 .brand b { font-weight: 800; }
 .brand.small { font-size: .95rem; color: var(--muted); }
 .nav { display: flex; gap: 1.1rem; margin-left: auto; font-size: .93rem; }
@@ -64,6 +64,11 @@ p { margin: 0 0 1rem; }
   min-width: 44px; min-height: 44px;
 }
 .lang button.on { background: var(--accent-2); color: #fff; }
+/* the install button would overflow the 375px header; mobile browsers offer their own prompt */
+.install { display: none; }
+@media (min-width: 768px) {
+  .install:not([hidden]) { display: inline-flex; }
+}
 
 /* hero */
 .hero { padding: clamp(2.4rem, 6vw, 4.5rem) 0 clamp(2rem, 4vw, 3rem); }

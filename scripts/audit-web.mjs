@@ -145,8 +145,19 @@ try {
       scrollW: document.documentElement.scrollWidth,
       clientW: document.documentElement.clientWidth,
     }));
-    if (overflow.scrollW > overflow.clientW + 1) note(`${width}px: horizontal overflow ${overflow.scrollW} > ${overflow.clientW}`);
-    else ok(`${width}px: no horizontal overflow`);
+    if (overflow.scrollW > overflow.clientW + 1) {
+      const widest = await page.evaluate(() => {
+        const out = [];
+        for (const el of document.querySelectorAll("*")) {
+          const r = el.getBoundingClientRect();
+          if (r.right > document.documentElement.clientWidth + 1) {
+            out.push({ tag: el.tagName.toLowerCase(), cls: (el.className || "").toString().slice(0, 30), right: Math.round(r.right) });
+          }
+        }
+        return out.slice(0, 5);
+      });
+      note(`${width}px: horizontal overflow ${overflow.scrollW} > ${overflow.clientW} :: ${JSON.stringify(widest)}`);
+    } else ok(`${width}px: no horizontal overflow`);
 
     if (width === 390) {
       const targets = await page.evaluate(new Function(`return (${TARGETS_JS})()`));
@@ -192,6 +203,28 @@ try {
       });
       if (parseFloat(motion.duration) > 0 || motion.animation !== "none") note(`reduced-motion not honoured (${JSON.stringify(motion)})`);
       else ok("prefers-reduced-motion disables motion");
+
+      // PWA: manifest reachable and a service worker actually registers
+      const manifest = await page.evaluate(() => document.querySelector('link[rel="manifest"]')?.href ?? null);
+      if (!manifest) note("no manifest link");
+      else {
+        const res = await page.evaluate(async (href) => {
+          const r = await fetch(href);
+          const json = await r.json().catch(() => null);
+          return { status: r.status, display: json?.display ?? null };
+        }, manifest);
+        if (res.status !== 200 || res.display !== "standalone") note(`manifest not usable (${JSON.stringify(res)})`);
+        else ok("manifest reachable and standalone");
+      }
+
+      const sw = await page.evaluate(async () => {
+        if (!("serviceWorker" in navigator)) return { supported: false };
+        const reg = await navigator.serviceWorker.getRegistration();
+        return { supported: true, scope: reg?.scope ?? null, active: Boolean(reg?.active) };
+      });
+      if (!sw.supported) note("service worker unsupported");
+      else if (!sw.active) note("service worker did not activate");
+      else ok(`service worker active (${sw.scope})`);
     }
     await page.close();
   }

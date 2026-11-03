@@ -84,6 +84,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Audit web/ (overflow, tap targets, contrast, focus, motion)
         run: node scripts/audit-web.mjs
+      - name: PWA offline check (service worker + cached shell)
+        run: node scripts/verify-pwa-offline.mjs
 
   exe:
     name: one-file exe (windows)
