@@ -12,10 +12,13 @@ import uvicorn
 from .app import create_app
 from .config import PROJECT_ROOT, Settings, config_file
 from .doctor import render, report
+from .orphans import ledger_path, reap
 from .registry import load_registry
 from .scheduler import Scheduler
 from .supervisor import Supervisor
 from .warmup import Warmer, make_hook
+
+log = logging.getLogger("localai_gateway")
 
 
 def build_app(settings: Settings | None = None):
@@ -30,7 +33,14 @@ def build_app(settings: Settings | None = None):
         return json.loads(prefix_file.read_text(encoding="utf8")) if prefix_file.exists() else None
 
     warmer = Warmer(settings.cache_dir, httpx.AsyncClient())
-    scheduler = Scheduler(settings, registry, Supervisor(), on_started=make_hook(warmer, load_prefix))
+    ledger = ledger_path(settings.cache_dir)
+    # a killed gateway leaves its backends holding GPU memory; kill exactly those before spawning new
+    killed = reap(ledger, gateway_pid=os.getpid())
+    if killed:
+        log.warning("reaped %d orphaned backend(s) from a previous run: %s",
+                    len(killed), ", ".join(str(e["pid"]) for e in killed))
+    scheduler = Scheduler(settings, registry, Supervisor(ledger=ledger),
+                          on_started=make_hook(warmer, load_prefix))
     return settings, create_app(settings, registry, scheduler)
 
 

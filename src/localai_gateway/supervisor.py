@@ -3,15 +3,19 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import socket
 import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Awaitable, Callable
 
 import httpx
 import psutil
+
+from .orphans import forget, record
 
 PORT_RANGE = range(18100, 18200)
 BACKOFF = (1, 2, 4)
@@ -131,6 +135,7 @@ class Supervisor:
         backoff: tuple[float, ...] = BACKOFF,
         stable_after_s: float = 60.0,
         clock: Callable[[], float] = time.monotonic,
+        ledger: "Path | None" = None,
     ) -> None:
         self._sleep = sleep  # backoff sleeps only (injectable); health polling uses asyncio.sleep
         self.health_timeout = health_timeout
@@ -138,6 +143,8 @@ class Supervisor:
         self.backoff = backoff
         self.stable_after_s = stable_after_s
         self._clock = clock
+        # backends we spawned, so a killed gateway's children can be reaped at the next start
+        self.ledger = ledger
         self.last_pid: int | None = None
 
     async def _spawn(self, argv: list[str]) -> tuple[Any, float | None]:
@@ -146,6 +153,8 @@ class Supervisor:
             kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
         proc = await asyncio.create_subprocess_exec(*argv, **kwargs)
         self.last_pid = proc.pid
+        if self.ledger is not None:
+            record(self.ledger, pid=proc.pid, gateway_pid=os.getpid(), label=argv[0] if argv else "")
         return proc, _ctime_of(proc.pid)
 
     async def _wait_healthy(self, proc: Any, ctime: float | None, health_url: str) -> None:
@@ -255,6 +264,8 @@ class Supervisor:
             await _kill_tree(*mp._pending)
         if mp._proc is not None:
             await _kill_tree(mp._proc, mp._ctime)
+        if self.ledger is not None:
+            forget(self.ledger, mp.pid)
 
     async def health(self, mp: ManagedProcess) -> bool:
         if mp.stopped or mp.failed or mp._proc.returncode is not None:
