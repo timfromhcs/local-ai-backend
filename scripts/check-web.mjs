@@ -91,8 +91,31 @@ for (const f of ["index.html", "styles.css", "app.js", "i18n.js", "vercel.json"]
 if (problems.length === 0) ok("DOM anchors and assets present");
 
 // 5. no external stylesheet/font request that would break offline checks
-if (/<link[^>]+href="https?:\/\//.test(html)) fail("index.html loads an external stylesheet");
+if (/<link[^>]+rel="stylesheet"[^>]+href="https?:\/\//.test(html)) fail("index.html loads an external stylesheet");
 else ok("no external stylesheet");
+
+// 6. SEO and discovery
+const head = html.slice(0, html.indexOf("</head>"));
+for (const needle of ['rel="canonical"', 'hreflang="en"', 'hreflang="de"', 'hreflang="fr"', 'hreflang="x-default"', 'application/ld+json']) {
+  if (!head.includes(needle)) fail(`index.html head missing ${needle}`);
+}
+const ldBlocks = [...head.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+if (ldBlocks.length < 2) fail("expected SoftwareApplication + FAQPage JSON-LD");
+for (const block of ldBlocks) {
+  try {
+    const parsed = JSON.parse(block);
+    if (!parsed["@context"].includes("schema.org")) fail("JSON-LD without schema.org context");
+  } catch (e) {
+    fail(`JSON-LD does not parse: ${e.message}`);
+  }
+}
+for (const file of ["robots.txt", "sitemap.xml"]) {
+  if (!fs.existsSync(path.join(web, file))) fail(`missing web/${file}`);
+}
+const sitemap = fs.existsSync(path.join(web, "sitemap.xml")) ? fs.readFileSync(path.join(web, "sitemap.xml"), "utf8") : "";
+if (sitemap && !sitemap.includes("https://local-ai-backend-blue.vercel.app/")) fail("sitemap lacks the production URL");
+if (sitemap && !/hreflang="(en|de|fr)"/.test(sitemap)) fail("sitemap lacks hreflang alternates");
+if (problems.length === 0) ok("SEO: canonical, hreflang, JSON-LD, robots, sitemap");
 
 console.log(problems.length ? `\n${problems.length} problem(s)` : "\nweb check: PASS");
 process.exit(problems.length ? 1 : 0);
