@@ -19,6 +19,7 @@ from .benchscore import SUITES as BENCH_SUITES, BenchResult
 from .config import Settings, config_file
 from .doctor import report
 from .duo import Duo, DuoConfig, to_sse_chunks
+from .exposure import max_body_bytes
 from .hardware import detect_device, profile_for
 from .modes import ModeController
 from .placement import Unsatisfiable, solve_placement
@@ -137,6 +138,11 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
 
     @app.middleware("http")
     async def version_header(request: Request, call_next):
+        limit = max_body_bytes()
+        declared = request.headers.get("content-length")
+        if declared and declared.isdigit() and int(declared) > limit:
+            return error(413, "payload_too_large",
+                         f"request body exceeds {limit // (1024 * 1024)} MB", limit_bytes=limit)
         response = await call_next(request)
         response.headers["X-LocalAI-Version"] = __version__
         return response

@@ -155,8 +155,10 @@ client (editor / script / MCP)
 ```
 
 Errors are structured and stable: `model_not_found` (404), `model_unavailable` (503),
-`does_not_fit` (503), `no_placement` (409), `backend_error` (503). CORS allows explicit origins
-plus `*.vercel.app` previews, never a wildcard.
+`does_not_fit` (503), `no_placement` (409), `payload_too_large` (413), `backend_error` (503).
+CORS allows explicit origins plus `*.vercel.app` previews, never a wildcard. The process refuses
+to bind a non-loopback address without `LOCALAI_ALLOW_PUBLIC=1`, because there is no
+authentication by design.
 
 ## The web demo
 [`web/`](web/) is a static site (no build step) at
