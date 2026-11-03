@@ -79,8 +79,8 @@ def report(settings: Settings, registry: dict[str, ModelSpec], models_yaml: Path
         cpu_physical=psutil.cpu_count(logical=False) or psutil.cpu_count() or 1,
         platform=f"{platform.system()} {platform.release()}",
         gpus=gpu_names(),
-        llama_server=str(settings.bin_dir / "llama" / "llama-server.exe"),
-        sd_server=str(settings.bin_dir / "sd" / "sd-server.exe"),
+        llama_server=str(settings.llama_path()),
+        sd_server=str(settings.sd_path()),
         models=tuple(rows),
         ready=ready,
     )
