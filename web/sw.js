@@ -1,7 +1,7 @@
 /* LocalAI Gateway service worker.
    Precache the shell so the page opens offline; models are NOT cached here (they are large and
    the browser handles those caches). Bump SW_VERSION to invalidate. */
-const SW_VERSION = "v2";
+const SW_VERSION = "v1793716618";
 
 // A cached redirect may not be returned for a navigation (Vercel's cleanUrls turns
 // /index.html into a 308). Re-wrap the body in a plain Response so the browser accepts it.

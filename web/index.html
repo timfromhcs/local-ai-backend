@@ -227,6 +227,13 @@
           <button class="btn" id="download-lab" disabled data-i18n="lab.download">Download results (JSON)</button>
         </div>
         <div id="lab-out"></div>
+        <details class="history" id="history">
+          <summary data-i18n="history.title">Past runs on this device</summary>
+          <div class="row">
+            <button class="btn" id="refresh-history" data-i18n="history.refresh">Refresh</button>
+          </div>
+          <div id="run-history" aria-live="polite"></div>
+        </details>
         <div class="row data-row">
           <span class="muted" data-i18n="data.local">Your data stays in this browser. Nothing is uploaded.</span>
           <button class="btn" id="export-data" data-i18n="data.export">Export JSON</button>

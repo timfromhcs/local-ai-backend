@@ -19,13 +19,20 @@ The rules are deliberately boring.
 ## Local gates (run these before pushing)
 
 ```powershell
-.\.venv\Scripts\python -m pytest -m "not real" -q     # 226+ tests, no model downloads
+.\.venv\Scripts\python -m pytest -m "not real" -q     # 272+ tests, no model downloads
 node scripts\check-web.mjs                            # vercel.json, CSP, i18n parity, SEO, assets
-node scripts\audit-web.mjs                            # Chromium: contrast, tap targets, focus, motion
+node scripts\audit-web.mjs                            # Chromium: contrast, tap targets, focus, motion, console errors
+node scripts\verify-storage.mjs                       # IndexedDB + OPFS round-trip, history rendering
+node scripts\verify-pwa-offline.mjs                   # service worker serves the shell offline
 python scripts\scan_secrets.py                        # no tokens in tracked files
 python scripts\sbom.py --out dist\sbom.cdx.json       # CycloneDX 1.5
 python -m localai_gateway --self-test                 # API works in-process, no port
+python scripts\release-check.py                       # all 12 gates with one verdict
 ```
+
+Deploying the demo: use `scripts\deploy-web.ps1`. It runs the web gate, stamps the service-worker
+cache version (so the first load after a deploy is not stale), deploys, then verifies production.
+Plain `vercel deploy` still works but can serve the previous `app.js` once.
 
 `npm run` is not used: the web demo has no build step, on purpose.
 
