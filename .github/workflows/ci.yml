@@ -88,6 +88,8 @@ jobs:
         run: node scripts/audit-web.mjs
       - name: PWA offline check (service worker + cached shell)
         run: node scripts/verify-pwa-offline.mjs
+      - name: Local storage check (IndexedDB + OPFS)
+        run: node scripts/verify-storage.mjs
 
   exe:
     name: one-file exe (windows)

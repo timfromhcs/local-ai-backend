@@ -284,6 +284,15 @@ $('#run-lab').addEventListener('click', async () => {
       <div class="table-scroll"><table><thead><tr><th>${t('lab.task')}</th><th>${t('lab.want')}</th><th>${t('lab.got')}</th><th>p</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
       <p class="ok">${t('lab.done')} — ${t('lab.limit')}</p>`;
     state.lab = { before, after, trainAcc, loss, model: state.model, backend: state.backend };
+    const saved = await saveLabRun({
+      kind: 'lab-run',
+      at: new Date().toISOString(),
+      model: state.model,
+      backend: state.backend,
+      metrics: state.lab,
+      rows: TEST.map(([text], i) => ({ task: text, score: head.predict(testX[i]).indexOf(Math.max(...head.predict(testX[i]))) === testY[i] })),
+    }).catch(() => null);
+    if (saved) out.insertAdjacentHTML('beforeend', `<p class="note">${t('storage.saved')}: <code>${saved}</code></p>`);
     $('#download-lab').disabled = false;
   } catch (e) {
     out.innerHTML = `<p class="status bad">${e.message}</p>`;
@@ -512,6 +521,71 @@ $('#form-gguf').addEventListener('submit', async (ev) => {
   }
 });
 
+/* ---------------------------------------------------------- OPFS (large data)
+   IndexedDB is fine for preferences; benchmark runs and transcripts can outgrow it.
+   The Origin Private File System keeps them on the device, still without a server. */
+const opfs = {
+  async available() {
+    return typeof navigator !== 'undefined' && typeof navigator.storage?.getDirectory === 'function';
+  },
+  async root() {
+    return navigator.storage.getDirectory();
+  },
+  async dir(name = 'runs', create = true) {
+    const root = await this.root();
+    return root.getDirectoryHandle(name, { create });
+  },
+  async write(name, value, dir = 'runs') {
+    const handle = await this.dir(dir);
+    const file = await handle.getFileHandle(name, { create: true });
+    const writable = await file.createWritable();
+    await writable.write(JSON.stringify(value));
+    await writable.close();
+    return `${dir}/${name}`;
+  },
+  async read(name, dir = 'runs') {
+    try {
+      const handle = await this.dir(dir, false);
+      const file = await handle.getFileHandle(name);
+      return JSON.parse(await (await file.getFile()).text());
+    } catch { return null; }
+  },
+  async list(dir = 'runs') {
+    try {
+      const handle = await this.dir(dir, false);
+      const out = [];
+      for await (const [name, entry] of handle.entries()) {
+        if (entry.kind === 'file') out.push(name);
+      }
+      return out.sort();
+    } catch { return []; }
+  },
+  async clear() {
+    try {
+      const root = await this.root();
+      for await (const [name, entry] of root.entries()) {
+        if (entry.kind === 'directory') await root.removeEntry(name, { recursive: true });
+      }
+      return true;
+    } catch { return false; }
+  },
+  async usage() {
+    try {
+      const { usage, quota } = await navigator.storage.estimate();
+      return { usedMb: +(usage / 2 ** 20).toFixed(2), quotaMb: +(quota / 2 ** 20).toFixed(0) };
+    } catch { return null; }
+  },
+};
+
+// Small, documented test hook so scripts/verify-storage.mjs can exercise the real code paths.
+// It is attached after `store` is defined (below) - referencing it earlier would be a TDZ error
+// and would break the whole module.
+
+async function saveLabRun(payload) {
+  if (!(await opfs.available())) return null;
+  return opfs.write(`run-${Date.now()}.json`, payload);
+}
+
 /* ------------------------------------------------- local-first user data
    IndexedDB when available, localStorage as fallback. Nothing is uploaded;
    the export/import pair is how a user moves machines without an account. */
@@ -589,6 +663,9 @@ const store = {
   },
 };
 
+// attach the test hook now that both layers exist
+window.localaiStorage = { opfs, store };
+
 async function restorePrefs() {
   const saved = await store.get('prefs', null);
   if (!saved) return;
@@ -615,6 +692,12 @@ function dataStatus(text, kind = '') {
 
 $('#export-data').addEventListener('click', async () => {
   const payload = { kind: 'localai-export', version: 1, createdAt: new Date().toISOString(), data: await store.all() };
+  if (await opfs.available()) {
+    payload.opfs = {};
+    for (const name of await opfs.list()) payload.opfs[name] = await opfs.read(name);
+    const usage = await opfs.usage();
+    if (usage) payload.usage = usage;
+  }
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -644,6 +727,7 @@ $('#import-file').addEventListener('change', async (ev) => {
 
 $('#clear-data').addEventListener('click', async () => {
   await store.clear();
+  await opfs.clear();
   dataStatus(t('data.cleared'), 'good');
 });
 
