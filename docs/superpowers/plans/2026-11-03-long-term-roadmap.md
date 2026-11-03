@@ -57,6 +57,12 @@ of the required up-to-date branches, and batching is one CI run instead of five.
 rejected outright: the Playwright bump to `1.65.0-alpha-1792021904000` is a timestamp-suffixed
 alpha, not a published release, and our pin must stay a version that exists.
 
+**Exposure hardening (PR #36):** the gateway has no authentication by design, so it now refuses a
+non-loopback bind unless `LOCALAI_ALLOW_PUBLIC=1` (exit code 2 with a message naming the opt-in),
+and rejects request bodies above `LOCALAI_MAX_BODY_MB` (default 8) with `413 payload_too_large`
+before reading them. The container opts in explicitly and visibly; 7 tests cover the guard, the
+limit and the error envelope.
+
 ### Phase B — dogfooding the RSI loop (next)
 - Run every autonomous cycle through `rsi-capture` (start → tool → verification → finalize).
 - Reach 20+ verified pairs, then a real LoRA run on the 1.5B router in `.venv-train`
