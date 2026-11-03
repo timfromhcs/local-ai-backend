@@ -1,11 +1,35 @@
 from __future__ import annotations
 
+import os
+import sys
 from pathlib import Path
 
 import psutil
 from pydantic import BaseModel
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+def _project_root() -> Path:
+    """Source tree in dev, the exe's folder when frozen (models/bin live next to it)."""
+    if getattr(sys, "frozen", False):
+        return Path(os.environ.get("LOCALAI_HOME", Path(sys.executable).parent))
+    return Path(__file__).resolve().parents[2]
+
+
+def bundle_dir() -> Path:
+    """Read-only files shipped inside the one-file exe (e.g. models.yaml)."""
+    meipass = getattr(sys, "_MEIPASS", None)
+    return Path(meipass) if meipass else _project_root()
+
+
+def config_file(name: str) -> Path:
+    """Prefer the user-editable file next to the exe, fall back to the bundled copy."""
+    local = _project_root() / name
+    if local.exists():
+        return local
+    return bundle_dir() / name
+
+
+PROJECT_ROOT = _project_root()
 
 
 class Settings(BaseModel):

@@ -1,9 +1,16 @@
 {
-  // Project-local OpenCode config: local Bonsai-27B as implementer (no cloud).
+  // Project-local OpenCode config.
+  // MCP servers are NOT redefined here on purpose: the previous version set every
+  // server to { "command": ["true"], "enabled": false }. OpenCode still tried to
+  // start them, `true` does not exist on Windows, and every server reported
+  // "MCP server process exited with code 1" (github, playwright, ast-grep, fetch,
+  // memory, sequential-thinking, blender, system-one-jev). Omitting the `mcp` key
+  // lets the global config (real commands, real tokens) apply again.
+  //
   // Port 18090 is outside the supervisor range 18100-18199 and the Jev server port 8080.
-  // LEAN PROMPT: the global config enables 10 MCP servers (github --toolsets=all, playwright, blender, ...);
-  // their tool schemas alone made the first request ~13.6k tokens (~9 min prefill at 26 tok/s).
-  // Disabling them here (project scope only) keeps the built-in file/shell tools and cuts TTFT.
+  // NOTE: only ONE model can stay resident next to a 9 GB model. If you want the
+  // shortest possible prompt for the local 27B, start OpenCode with a dedicated
+  // profile instead of silently breaking MCPs.
   "$schema": "https://opencode.ai/config.json",
   "model": "bonsai/bonsai-27b",
   "small_model": "bonsai/bonsai-27b",
@@ -20,17 +27,5 @@
         }
       }
     }
-  },
-  "mcp": {
-    "blender": { "type": "local", "command": ["true"], "enabled": false },
-    "github": { "type": "local", "command": ["true"], "enabled": false },
-    "context7": { "type": "remote", "url": "https://mcp.context7.com/mcp", "enabled": false },
-    "sequential-thinking": { "type": "local", "command": ["true"], "enabled": false },
-    "memory": { "type": "local", "command": ["true"], "enabled": false },
-    "fetch": { "type": "local", "command": ["true"], "enabled": false },
-    "playwright": { "type": "local", "command": ["true"], "enabled": false },
-    "ast-grep": { "type": "local", "command": ["true"], "enabled": false },
-    "better-design": { "type": "remote", "url": "https://better-design.com/api/mcp", "enabled": false },
-    "system-one-jev": { "type": "local", "command": ["true"], "enabled": false }
   }
 }

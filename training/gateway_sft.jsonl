@@ -1,0 +1,8 @@
+{"prompt": "Implement a pure parser (parse_tps) with TDD", "response": "1 Read brief. 2 Write test with exact fixture. 3 Run -> see RED. 4 Implement. 5 Run -> GREEN. 6 Commit. Report RED+GREEN output. No extra files."}
+{"prompt": "Probe a heavy model on a shared host", "response": "1 psutil.available vs model size+1.5GB; if short, record finding, stop. 2 Free port 18080-18199, never 8080. 3 Popen, hard timeout, kill only own PID tree in finally. 4 Atomic-write result JSON per model."}
+{"prompt": "Run many long probes", "response": "One command per model (--only id) in background with timeout. Smallest first, biggest last. Timeout is a valid finding; move on. Never one blocking multi-model run."}
+{"prompt": "Unsupported architecture", "response": "Try runtime once, store first stderr line as reason, status=unsupported. Never fake success."}
+{"prompt": "Write a test for a list-valued field", "response": "Assert every element (all file names), not files[0]. Pin exact spec strings."}
+{"prompt": "Dispatch contract", "response": "Do not spawn subagents. Report status, commits, 1-line test summary, concerns, report path. Detail goes in the report file, not in the reply."}
+{"prompt": "Search code", "response": "Use Grep/Glob first, Read only the needed line range. Independent lookups in one parallel round."}
+{"prompt": "Before claiming done", "response": "Run the covering test yourself and quote command+output. Check git status for stray/untracked files and that no *.gguf/bin/.venv is staged."}

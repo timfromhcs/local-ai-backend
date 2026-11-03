@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 520" role="img" aria-label="Architecture: client to gateway to scheduler to models">
+  <defs>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#818cf8"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="520" rx="20" fill="#0f141f"/>
+
+  <g font-family="Segoe UI, system-ui" fill="#e8edf5">
+    <rect x="40" y="60" width="180" height="76" rx="12" fill="#1a2230" stroke="#2c3a52"/>
+    <text x="130" y="90" text-anchor="middle" font-size="14" font-weight="700">POST /v1/chat</text>
+    <text x="130" y="112" text-anchor="middle" font-size="11.5" fill="#93a4bf">OpenAI schema</text>
+
+    <rect x="270" y="48" width="180" height="100" rx="12" fill="#16203a" stroke="#3b4a6b"/>
+    <text x="360" y="78" text-anchor="middle" font-size="14" font-weight="700">gateway app</text>
+    <text x="360" y="99" text-anchor="middle" font-size="11.5" fill="#93a4bf">CORS · errors</text>
+    <text x="360" y="118" text-anchor="middle" font-size="11.5" fill="#93a4bf">duo orchestration</text>
+    <text x="360" y="137" text-anchor="middle" font-size="11.5" fill="#93a4bf">streaming passthrough</text>
+
+    <rect x="500" y="48" width="180" height="100" rx="12" fill="#1a2230" stroke="#2c3a52"/>
+    <text x="590" y="78" text-anchor="middle" font-size="14" font-weight="700">scheduler</text>
+    <text x="590" y="99" text-anchor="middle" font-size="11.5" fill="#93a4bf">RAM budget</text>
+    <text x="590" y="118" text-anchor="middle" font-size="11.5" fill="#93a4bf">LRU eviction</text>
+    <text x="590" y="137" text-anchor="middle" font-size="11.5" fill="#93a4bf">in-use refcount</text>
+
+    <rect x="500" y="200" width="180" height="86" rx="12" fill="#141b28" stroke="#2c3a52"/>
+    <text x="590" y="230" text-anchor="middle" font-size="13.5" font-weight="700">llama-server :18xxx</text>
+    <text x="590" y="250" text-anchor="middle" font-size="11.5" fill="#93a4bf">lazy start · health</text>
+    <text x="590" y="269" text-anchor="middle" font-size="11.5" fill="#93a4bf">slot state on SSD</text>
+
+    <rect x="270" y="216" width="180" height="86" rx="12" fill="#141b28" stroke="#2c3a52"/>
+    <text x="360" y="246" text-anchor="middle" font-size="13.5" font-weight="700">mode controller</text>
+    <text x="360" y="266" text-anchor="middle" font-size="11.5" fill="#93a4bf">fast / duo / big-out</text>
+    <text x="360" y="285" text-anchor="middle" font-size="11.5" fill="#93a4bf">periodic check-up</text>
+
+    <rect x="40" y="216" width="180" height="86" rx="12" fill="#141b28" stroke="#2c3a52"/>
+    <text x="130" y="246" text-anchor="middle" font-size="13.5" font-weight="700">Jev :8080</text>
+    <text x="130" y="266" text-anchor="middle" font-size="11.5" fill="#93a4bf">1.5B classifier</text>
+    <text x="130" y="285" text-anchor="middle" font-size="11.5" fill="#93a4bf">Bearer local</text>
+
+    <rect x="40" y="360" width="640" height="120" rx="12" fill="#121826" stroke="#26324a"/>
+    <text x="64" y="390" font-size="13" font-weight="700">measured on this laptop</text>
+    <text x="64" y="414" font-size="12" fill="#93a4bf">27B q4 decode 5.9 tok/s · prefill ~32 tok/s · 4B 22.6 tok/s · 1.5B 55.7 tok/s</text>
+    <text x="64" y="436" font-size="12" fill="#93a4bf">cached 16.2k agent prefix: 0.8 s prompt phase, 5.0 s total on the second request</text>
+    <text x="64" y="458" font-size="12" fill="#93a4bf">cold start of the same prompt: 70–190 s — prefix reuse is the biggest single win</text>
+  </g>
+
+  <g stroke="url(#accent)" stroke-width="2" fill="none" stroke-linecap="round">
+    <path d="M220 98h44"/><path d="M450 98h44"/><path d="M590 148v44"/>
+    <path d="M500 243h-56"/><path d="M270 259h-56"/>
+  </g>
+</svg>

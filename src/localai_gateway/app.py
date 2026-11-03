@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
 
 import httpx
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from .adapters.llm import BackendError, forward_chat, iter_stream, open_stream
@@ -21,6 +23,25 @@ from .supervisor import BackendStartError
 
 def error(status: int, code: str, reason: str, **extra: Any) -> JSONResponse:
     return JSONResponse({"error": {"code": code, "reason": reason, **extra}}, status_code=status)
+
+
+DEFAULT_CORS_ORIGINS = (
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8090",
+    "http://127.0.0.1:8090",
+)
+
+
+def cors_origins() -> list[str]:
+    """Explicit origins only (never '*'), overridable with LOCALAI_CORS_ORIGINS=a,b,c."""
+    raw = os.environ.get("LOCALAI_CORS_ORIGINS", "")
+    items = [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
+    return items or list(DEFAULT_CORS_ORIGINS)
 
 
 def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: Any,
@@ -40,6 +61,16 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
                 await holder["client"].aclose()
 
     app = FastAPI(title="localai-gateway", lifespan=lifespan)
+    # The static demo (Vercel preview/production) and local dev servers call this gateway
+    # from the browser. Explicit origins + vercel.app previews, never "*".
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins(),
+        allow_origin_regex=r"https://[a-z0-9][a-z0-9.-]*\.vercel\.app",
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["*"],
+        max_age=86400,
+    )
     app.state.scheduler, app.state.registry = scheduler, registry
 
     def release_later(model_id: str) -> None:

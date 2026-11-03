@@ -1,0 +1,349 @@
+/* Three languages, one page. Keys are flat: section.name */
+(function () {
+  const en = {
+    'a11y.skip': 'Skip to content',
+    'nav.demo': 'Live demo', 'nav.lab': 'Lab', 'nav.guide': 'Zero to Hero', 'nav.numbers': 'Numbers', 'nav.repo': 'GitHub',
+    'hero.eyebrow': 'Local first · OpenAI-compatible · Windows + Vulkan',
+    'hero.title': 'Your models. Your machine. One API.',
+    'hero.lead': 'LocalAI Gateway puts a single OpenAI-compatible endpoint in front of the models already on your disk. It loads them lazily, keeps the ones that fit, evicts the rest, and routes each request to the cheapest model that can answer it.',
+    'hero.cta1': 'Try it in the browser', 'hero.cta2': 'Build it in 20 minutes',
+    'hero.fact1': 'MCP servers, all local', 'hero.fact2': 'tok/s on a 27B model, measured', 'hero.fact3': 'EXE, no model files inside',
+
+    'demo.title': 'Live demo: two ways to talk to a model',
+    'demo.sub': 'Path A runs a small ONNX model entirely inside this tab: WebGPU when the browser has it, WebAssembly everywhere else. Path B connects to the gateway on your own computer. This page is static — nothing sends your prompt to a server we control.',
+    'demo.tabA': 'A · In-browser (ONNX)', 'demo.tabB': 'B · My local gateway',
+    'demo.detect': 'Checking your hardware…', 'demo.detected': 'Detected',
+    'demo.wasmOnly': 'No WebGPU adapter: the ONNX model will run on WebAssembly (slower, same result).',
+    'demo.tier': 'Model tier', 'demo.load': 'Load model', 'demo.loading': 'Loading',
+    'demo.ready': 'Model ready', 'demo.loadFailed': 'Load failed', 'demo.loadFirst': 'Load a model first.',
+    'demo.prompt': 'Prompt', 'demo.placeholder': 'Explain what a KV cache does, in three sentences.',
+    'demo.placeholder2': 'Which model are you, and what is my RAM budget?',
+    'demo.send': 'Send', 'demo.failed': 'Request failed', 'demo.empty': '(empty answer)',
+    'demo.chunks': 'stream chunks',
+    'demo.noteA': 'Weights are downloaded once as ONNX from the Hugging Face CDN and cached by the browser. GGUF is an inference format, so the browser path uses ONNX; real weight training stays on your machine.',
+    'demo.base': 'Gateway URL', 'demo.connect': 'Connect', 'demo.probing': 'Probing the gateway…',
+    'demo.notConnected': 'Not connected yet. Start the gateway, then press Connect.',
+    'demo.online': 'Gateway online', 'demo.degraded': 'Gateway answered but not healthy',
+    'demo.readyModels': 'ready models', 'demo.offline': 'Gateway unreachable',
+    'demo.offlineHint': 'Start it with: localai-gateway --port 8090',
+    'demo.connectFirst': 'Connect to the gateway first.', 'demo.model': 'Model',
+    'demo.noteB': 'The gateway allows this origin through CORS and nothing else. If the browser blocks the call, serve the page over http://localhost (not file://) or add your origin to LOCALAI_CORS_ORIGINS.',
+
+    'lab.title': 'Teacher → student, trained in this tab',
+    'lab.sub': 'A frozen ONNX encoder turns each task into a 384-dimension vector. A teacher labels the route (fast / duo / bigout). A softmax head is then trained here with SGD and measured on held-out tasks before and after. That is real training of real weights — of a head, not of the LLM.',
+    'lab.run': 'Train head & benchmark', 'lab.download': 'Download results (JSON)',
+    'lab.honest': 'Honest scope: WebGPU accelerates inference here. Training the 1–2B model itself happens locally on CPU (LoRA, see the repository) because GGUF is inference-only and browser training of billions of parameters is not viable.',
+    'lab.embedding': 'Embedding tasks with', 'lab.backend': 'Backend', 'lab.model': 'Base model',
+    'lab.embedder': 'Embedder', 'lab.beforeAcc': 'Accuracy before training', 'lab.afterAcc': 'Accuracy after training',
+    'lab.trainAcc': 'Train accuracy', 'lab.loss': 'Loss (per epoch)', 'lab.task': 'Task', 'lab.want': 'Teacher', 'lab.got': 'Student',
+    'lab.done': 'Head trained in-browser', 'lab.limit': 'a head is not a fine-tuned LLM, and that difference stays visible.',
+
+    'guide.title': 'Zero to Hero',
+    'guide.sub': 'Eight steps, in the order that actually works. Each step names the command and what you should see. If a step fails, stop there — every later step assumes the previous one is green.',
+    'g1.t': '1 · Check the machine', 'g1.p': 'Know your RAM and your GPU before you download 9 GB. Task Manager is not enough; the gateway can tell you.',
+    'g1.ok': 'You should see your CPU threads, RAM, GPU and a model table with a status per model.',
+    'g2.t': '2 · Put a model on disk', 'g2.p': 'One GGUF file is enough to start. Keep it next to the exe and list it in models.yaml — the exe ships without weights on purpose.',
+    'g3.t': '3 · Start the gateway', 'g3.p': 'The server starts in under a second because it loads no model until the first request.',
+    'g3.ok': 'healthz answers {"status":"ok"}; /v1/models lists every model with a real status.',
+    'g4.t': '4 · First completion', 'g4.p': 'Any OpenAI client works. Point the base URL at the gateway and use any key — there is no cloud account.',
+    'g5.t': '5 · Use the duo model', 'g5.p': 'One virtual model plans with the big model, executes with the fast one, then verifies with the big model. You keep one endpoint and get better tool calls.',
+    'g6.t': '6 · Wire your editor', 'g6.p': 'Point your coding agent at http://127.0.0.1:8090/v1. Keep the system prompt stable and move volatile context into the first user message — that is what makes the prompt cache work.',
+    'g7.t': '7 · Measure, do not guess', 'g7.p': 'Record prefill and decode separately. On this laptop decode is bandwidth-bound: 5.9 tok/s for a 27B model at q4 is the ceiling, not a bug.',
+    'g8.t': '8 · Ship it', 'g8.p': 'Build the single-file exe, copy models.yaml next to it, and keep the weights out of the repository. Then deploy this static page and connect it to your machine.',
+
+    'num.title': 'Measured, not estimated',
+    'num.sub': 'Ryzen 7 7735HS, 24 GB LPDDR5X, Radeon 680M (RDNA2, 12 CU, Vulkan), Windows 11, llama.cpp Vulkan build. Every number below was produced on this machine and is stored in docs/perf-log.md.',
+    'num.h1': 'What', 'num.h2': 'Result', 'num.h3': 'Why it matters',
+    'num.r1': '88 GB/s theoretical RAM bandwidth is the wall, not the GPU',
+    'num.r2': 'About 50% of FP32 peak — close to the realistic ceiling',
+    'num.r3': 'Cached prefix reused instead of recomputed',
+    'num.r4': 'Why prefix caching is the single biggest win',
+    'num.r5': 'Fast enough to be the executor in the duo loop',
+    'num.r6': 'The System-1 router: cheap, deterministic, local',
+    'num.r7': 'Hermetic suite, no model downloads in CI',
+    'num.note': 'Honest limits: no matrix cores on RDNA2, so no tensor-core class speedup. A 27B model cannot be served at 50 tok/s on 88 GB/s of shared memory, no matter which flag you set. The gateway makes the model you already have usable; it does not invent bandwidth.',
+
+    'road.title': 'What is done, what is next',
+    'road.c1t': 'Working today',
+    'road.c1a': 'OpenAI-compatible gateway with lazy loading and LRU eviction',
+    'road.c1b': 'duo model: plan → execute → verify, bounded',
+    'road.c1c': 'Prompt-prefix cache with persisted llama-server slot state',
+    'road.c1d': 'Single-file EXE, no weights inside',
+    'road.c1e': '14 local MCP servers with a boot-time health check',
+    'road.c2t': 'Next',
+    'road.c2a': 'RSI capture MCP: chat → verified training pairs',
+    'road.c2b': 'LoRA distillation into the 1.5B router, gated by a fast bench',
+    'road.c2c': 'Tiny text-diffusion experiments on the iGPU, measured honestly',
+    'road.c2d': 'Docker SWE runner for verified agent episodes',
+    'road.c3t': 'Not promised',
+    'road.c3a': '50–100 tok/s on a 27B model on this hardware',
+    'road.c3b': 'Cloud-quality reasoning from a 4B model',
+    'road.c3c': 'A frontier model trained from scratch on an iGPU',
+
+    'arch.title': 'How the routing works',
+    'arch.p': 'Requests land on one endpoint. The scheduler checks the RAM budget, starts the model if it is not resident, and holds a refcount so a model is never killed mid-stream. The mode controller picks a lane: fast (small model only), duo (plan, execute, verify) or big-out (small model digests, big model writes). Errors escalate deterministically, so a failing tool call always ends up on the stronger model instead of looping.',
+    'arch.t1': 'Explicit CORS origins, never a wildcard',
+    'arch.t2': 'Structured errors: model_not_found, does_not_fit, model_unavailable',
+    'arch.t3': 'Streaming passthrough with release-on-disconnect',
+    'arch.t4': 'Unsupported models are listed with their real error text',
+
+    'faq.title': 'Questions people actually ask',
+    'faq.q1': 'Is my prompt leaving my computer?',
+    'faq.a1': 'Not through this page. It is static and has no backend. The in-browser model runs on your GPU or CPU; the local mode talks to 127.0.0.1. The only network traffic is the one-time model download and the CDN assets.',
+    'faq.q2': 'Why ONNX and not GGUF in the browser?',
+    'faq.a2': 'GGUF is an inference format built for llama.cpp. Browsers run ONNX through WebGPU or WebAssembly, so the demo uses ONNX weights. GGUF stays the right choice for the local gateway.',
+    'faq.q3': 'Can I use it with my existing OpenAI SDK?',
+    'faq.a3': 'Yes. Change the base URL to http://127.0.0.1:8090/v1 and keep your code. Streaming, tool calls and the models endpoint are supported.',
+    'faq.q4': 'Does the EXE include the models?',
+    'faq.a4': 'No, deliberately. The exe is the gateway only. Weights live next to it, listed in models.yaml, so updates never re-download gigabytes.',
+    'faq.q5': 'What about AMD and ROCm?',
+    'faq.a5': 'On RDNA2 APUs, ROCm measured roughly six times slower than Vulkan here. The Vulkan path is the supported one; the perf log has the experiment.',
+    'foot.made': 'Built on a laptop, measured on a laptop. No cloud account required.',
+    'foot.legal': 'Model weights are not included and keep their own licences. This page is a static demo.',
+  };
+
+  const de = {
+    'a11y.skip': 'Zum Inhalt springen',
+    'nav.demo': 'Live-Demo', 'nav.lab': 'Labor', 'nav.guide': 'Zero to Hero', 'nav.numbers': 'Messwerte', 'nav.repo': 'GitHub',
+    'hero.eyebrow': 'Lokal zuerst · OpenAI-kompatibel · Windows + Vulkan',
+    'hero.title': 'Deine Modelle. Dein Rechner. Eine API.',
+    'hero.lead': 'LocalAI Gateway setzt einen einzigen OpenAI-kompatiblen Endpunkt vor die Modelle, die schon auf deiner Platte liegen. Sie werden erst bei Bedarf geladen, was passt bleibt im Speicher, der Rest wird verdrängt, und jede Anfrage geht an das günstigste Modell, das sie beantworten kann.',
+    'hero.cta1': 'Im Browser ausprobieren', 'hero.cta2': 'In 20 Minuten nachbauen',
+    'hero.fact1': 'MCP-Server, alle lokal', 'hero.fact2': 'tok/s bei einem 27B-Modell, gemessen', 'hero.fact3': 'EXE, ohne Modelldateien',
+
+    'demo.title': 'Live-Demo: zwei Wege zu einem Modell',
+    'demo.sub': 'Weg A lässt ein kleines ONNX-Modell komplett in diesem Tab laufen: WebGPU, wenn der Browser es kann, sonst WebAssembly. Weg B verbindet sich mit dem Gateway auf deinem Rechner. Diese Seite ist statisch — nichts schickt deinen Prompt an einen Server von uns.',
+    'demo.tabA': 'A · Im Browser (ONNX)', 'demo.tabB': 'B · Mein lokales Gateway',
+    'demo.detect': 'Hardware wird geprüft…', 'demo.detected': 'Erkannt',
+    'demo.wasmOnly': 'Kein WebGPU-Adapter: das ONNX-Modell läuft über WebAssembly (langsamer, gleiches Ergebnis).',
+    'demo.tier': 'Modellstufe', 'demo.load': 'Modell laden', 'demo.loading': 'Lade',
+    'demo.ready': 'Modell bereit', 'demo.loadFailed': 'Laden fehlgeschlagen', 'demo.loadFirst': 'Lade zuerst ein Modell.',
+    'demo.prompt': 'Prompt', 'demo.placeholder': 'Erkläre in drei Sätzen, was ein KV-Cache macht.',
+    'demo.placeholder2': 'Welches Modell bist du, und wie groß ist mein RAM-Budget?',
+    'demo.send': 'Senden', 'demo.failed': 'Anfrage fehlgeschlagen', 'demo.empty': '(leere Antwort)',
+    'demo.chunks': 'Stream-Chunks',
+    'demo.noteA': 'Die Gewichte werden einmal als ONNX vom Hugging-Face-CDN geladen und vom Browser zwischengespeichert. GGUF ist ein Inferenzformat, deshalb nutzt der Browser ONNX; echtes Gewichtstraining bleibt lokal.',
+    'demo.base': 'Gateway-URL', 'demo.connect': 'Verbinden', 'demo.probing': 'Gateway wird geprüft…',
+    'demo.notConnected': 'Noch nicht verbunden. Starte das Gateway und drücke dann Verbinden.',
+    'demo.online': 'Gateway online', 'demo.degraded': 'Gateway antwortet, ist aber nicht gesund',
+    'demo.readyModels': 'einsatzbereite Modelle', 'demo.offline': 'Gateway nicht erreichbar',
+    'demo.offlineHint': 'Starte es mit: localai-gateway --port 8090',
+    'demo.connectFirst': 'Verbinde dich zuerst mit dem Gateway.', 'demo.model': 'Modell',
+    'demo.noteB': 'Das Gateway erlaubt genau diesen Origin per CORS. Wenn der Browser blockt, liefere die Seite über http://localhost aus (nicht file://) oder ergänze deinen Origin in LOCALAI_CORS_ORIGINS.',
+
+    'lab.title': 'Teacher → Student, direkt in diesem Tab trainiert',
+    'lab.sub': 'Ein eingefrorener ONNX-Encoder macht aus jeder Aufgabe einen 384-dimensionalen Vektor. Ein Teacher vergibt das Label (fast / duo / bigout). Danach wird hier per SGD ein Softmax-Head trainiert und auf zurückgehaltenen Aufgaben vorher/nachher gemessen. Das ist echtes Training echter Gewichte — eines Heads, nicht des LLM.',
+    'lab.run': 'Head trainieren & benchmarken', 'lab.download': 'Ergebnisse herunterladen (JSON)',
+    'lab.honest': 'Ehrlicher Rahmen: WebGPU beschleunigt hier die Inferenz. Das Training des 1–2B-Modells selbst läuft lokal auf der CPU (LoRA, siehe Repository), weil GGUF nur Inferenz ist und Browser-Training mit Milliarden Parametern nicht tragfähig ist.',
+    'lab.embedding': 'Aufgaben werden eingebettet mit', 'lab.backend': 'Backend', 'lab.model': 'Basismodell',
+    'lab.embedder': 'Embedder', 'lab.beforeAcc': 'Genauigkeit vor dem Training', 'lab.afterAcc': 'Genauigkeit nach dem Training',
+    'lab.trainAcc': 'Trainings-Genauigkeit', 'lab.loss': 'Loss (pro Epoche)', 'lab.task': 'Aufgabe', 'lab.want': 'Teacher', 'lab.got': 'Student',
+    'lab.done': 'Head im Browser trainiert', 'lab.limit': 'ein Head ist kein finetuned LLM, und dieser Unterschied bleibt sichtbar.',
+
+    'guide.title': 'Zero to Hero',
+    'guide.sub': 'Acht Schritte, in der Reihenfolge, die tatsächlich funktioniert. Jeder Schritt nennt den Befehl und was du sehen solltest. Wenn ein Schritt scheitert, höre dort auf — jeder weitere setzt den vorherigen voraus.',
+    'g1.t': '1 · Rechner prüfen', 'g1.p': 'Kenne RAM und GPU, bevor du 9 GB herunterlädst. Der Task-Manager reicht nicht; das Gateway kann es dir sagen.',
+    'g1.ok': 'Du siehst CPU-Threads, RAM, GPU und eine Modelltabelle mit Status pro Modell.',
+    'g2.t': '2 · Modell auf die Platte', 'g2.p': 'Eine GGUF-Datei reicht zum Start. Lege sie neben die EXE und trage sie in models.yaml ein — die EXE kommt absichtlich ohne Gewichte.',
+    'g3.t': '3 · Gateway starten', 'g3.p': 'Der Server startet in unter einer Sekunde, weil er kein Modell lädt, bevor die erste Anfrage kommt.',
+    'g3.ok': 'healthz antwortet {"status":"ok"}; /v1/models listet jedes Modell mit echtem Status.',
+    'g4.t': '4 · Erste Completion', 'g4.p': 'Jeder OpenAI-Client funktioniert. Setze die Base-URL auf das Gateway, der Key ist beliebig — es gibt kein Cloud-Konto.',
+    'g5.t': '5 · Das duo-Modell nutzen', 'g5.p': 'Ein virtuelles Modell plant mit dem großen, führt mit dem schnellen aus und prüft wieder mit dem großen. Du behältst einen Endpunkt und bekommst bessere Tool-Calls.',
+    'g6.t': '6 · Editor anbinden', 'g6.p': 'Richte deinen Coding-Agenten auf http://127.0.0.1:8090/v1. Halte den System-Prompt stabil und verschiebe flüchtigen Kontext in die erste User-Nachricht — genau das macht den Prompt-Cache wirksam.',
+    'g7.t': '7 · Messen statt raten', 'g7.p': 'Erfasse Prefill und Decode getrennt. Auf diesem Laptop ist Decode bandbreitenbegrenzt: 5,9 tok/s bei einem 27B-Modell in q4 sind die Obergrenze, kein Bug.',
+    'g8.t': '8 · Ausliefern', 'g8.p': 'Baue die Single-File-EXE, kopiere models.yaml daneben und halte die Gewichte aus dem Repository. Dann diese statische Seite deployen und mit deinem Rechner verbinden.',
+
+    'num.title': 'Gemessen, nicht geschätzt',
+    'num.sub': 'Ryzen 7 7735HS, 24 GB LPDDR5X, Radeon 680M (RDNA2, 12 CU, Vulkan), Windows 11, llama.cpp Vulkan-Build. Jede Zahl unten entstand auf dieser Maschine und steht in docs/perf-log.md.',
+    'num.h1': 'Was', 'num.h2': 'Ergebnis', 'num.h3': 'Warum es zählt',
+    'num.r1': '88 GB/s theoretische RAM-Bandbreite sind die Wand, nicht die GPU',
+    'num.r2': 'Etwa 50 % der FP32-Spitze — nahe am realistischen Limit',
+    'num.r3': 'Zwischengespeicherter Prefix wird wiederverwendet statt neu berechnet',
+    'num.r4': 'Deshalb ist Prefix-Caching der größte einzelne Gewinn',
+    'num.r5': 'Schnell genug, um im duo-Loop der Executor zu sein',
+    'num.r6': 'Der System-1-Router: günstig, deterministisch, lokal',
+    'num.r7': 'Hermetische Suite, keine Modell-Downloads in CI',
+    'num.note': 'Ehrliche Grenzen: RDNA2 hat keine Matrix-Cores, also keinen Tensor-Core-Sprung. Ein 27B-Modell lässt sich auf 88 GB/s geteiltem Speicher nicht mit 50 tok/s bedienen, egal welches Flag du setzt. Das Gateway macht das vorhandene Modell nutzbar; Bandbreite erfindet es nicht.',
+
+    'road.title': 'Was fertig ist, was als Nächstes kommt',
+    'road.c1t': 'Läuft heute',
+    'road.c1a': 'OpenAI-kompatibles Gateway mit Lazy Loading und LRU-Verdrängung',
+    'road.c1b': 'duo-Modell: planen → ausführen → prüfen, begrenzt',
+    'road.c1c': 'Prompt-Prefix-Cache mit persistiertem llama-server-Slot-Zustand',
+    'road.c1d': 'Single-File-EXE, ohne Gewichte',
+    'road.c1e': '14 lokale MCP-Server mit Health-Check beim Start',
+    'road.c2t': 'Als Nächstes',
+    'road.c2a': 'RSI-Capture-MCP: Chat → verifizierte Trainingspaare',
+    'road.c2b': 'LoRA-Destillation in den 1,5B-Router, gated durch ein Fast-Bench',
+    'road.c2c': 'Kleine Text-Diffusions-Experimente auf der iGPU, ehrlich gemessen',
+    'road.c2d': 'Docker-SWE-Runner für verifizierte Agent-Episoden',
+    'road.c3t': 'Nicht versprochen',
+    'road.c3a': '50–100 tok/s bei einem 27B-Modell auf dieser Hardware',
+    'road.c3b': 'Cloud-Qualität beim Reasoning aus einem 4B-Modell',
+    'road.c3c': 'Ein Frontier-Modell von Grund auf auf einer iGPU trainiert',
+
+    'arch.title': 'Wie das Routing funktioniert',
+    'arch.p': 'Anfragen landen auf einem Endpunkt. Der Scheduler prüft das RAM-Budget, startet das Modell, falls es nicht resident ist, und hält einen Refcount, damit kein Modell mitten im Stream beendet wird. Der Mode-Controller wählt eine Spur: fast (nur kleines Modell), duo (planen, ausführen, prüfen) oder big-out (kleines Modell fasst zusammen, großes schreibt). Fehler eskalieren deterministisch, damit ein scheiternder Tool-Call beim stärkeren Modell landet statt in einer Schleife.',
+    'arch.t1': 'Explizite CORS-Origins, niemals ein Wildcard',
+    'arch.t2': 'Strukturierte Fehler: model_not_found, does_not_fit, model_unavailable',
+    'arch.t3': 'Streaming-Passthrough mit Freigabe beim Trennen',
+    'arch.t4': 'Nicht unterstützte Modelle stehen mit ihrem echten Fehlertext da',
+
+    'faq.title': 'Fragen, die wirklich gestellt werden',
+    'faq.q1': 'Verlässt mein Prompt den Rechner?',
+    'faq.a1': 'Nicht über diese Seite. Sie ist statisch und hat kein Backend. Das Browser-Modell läuft auf deiner GPU oder CPU; der lokale Modus spricht mit 127.0.0.1. Netzwerkverkehr entsteht nur beim einmaligen Modell-Download und für die CDN-Assets.',
+    'faq.q2': 'Warum ONNX und nicht GGUF im Browser?',
+    'faq.a2': 'GGUF ist ein Inferenzformat für llama.cpp. Browser führen ONNX über WebGPU oder WebAssembly aus, deshalb nutzt die Demo ONNX-Gewichte. Für das lokale Gateway bleibt GGUF die richtige Wahl.',
+    'faq.q3': 'Funktioniert mein bestehendes OpenAI-SDK?',
+    'faq.a3': 'Ja. Setze die Base-URL auf http://127.0.0.1:8090/v1 und behalte deinen Code. Streaming, Tool-Calls und der Models-Endpunkt werden unterstützt.',
+    'faq.q4': 'Sind die Modelle in der EXE enthalten?',
+    'faq.a4': 'Nein, absichtlich. Die EXE ist nur das Gateway. Die Gewichte liegen daneben, aufgelistet in models.yaml, damit Updates nie Gigabytes erneut laden.',
+    'faq.q5': 'Und AMD mit ROCm?',
+    'faq.a5': 'Auf RDNA2-APUs war ROCm hier etwa sechs Mal langsamer als Vulkan. Der Vulkan-Pfad ist der unterstützte; das Experiment steht im Perf-Log.',
+    'foot.made': 'Auf einem Laptop gebaut, auf einem Laptop gemessen. Kein Cloud-Konto nötig.',
+    'foot.legal': 'Modellgewichte sind nicht enthalten und behalten ihre eigenen Lizenzen. Diese Seite ist eine statische Demo.',
+  };
+
+  const fr = {
+    'a11y.skip': 'Aller au contenu',
+    'nav.demo': 'Démo', 'nav.lab': 'Laboratoire', 'nav.guide': 'Zéro à héros', 'nav.numbers': 'Mesures', 'nav.repo': 'GitHub',
+    'hero.eyebrow': 'Local d’abord · compatible OpenAI · Windows + Vulkan',
+    'hero.title': 'Vos modèles. Votre machine. Une API.',
+    'hero.lead': 'LocalAI Gateway place un point d’accès unique compatible OpenAI devant les modèles déjà présents sur votre disque. Il les charge à la demande, garde ceux qui tiennent en mémoire, évince les autres et envoie chaque requête au modèle le moins coûteux capable de répondre.',
+    'hero.cta1': 'Essayer dans le navigateur', 'hero.cta2': 'Le reconstruire en 20 minutes',
+    'hero.fact1': 'serveurs MCP, tous locaux', 'hero.fact2': 'tok/s sur un modèle 27B, mesuré', 'hero.fact3': 'EXE, sans fichiers de modèles',
+
+    'demo.title': 'Démo : deux façons de parler à un modèle',
+    'demo.sub': 'La voie A exécute un petit modèle ONNX entièrement dans cet onglet : WebGPU si le navigateur le permet, sinon WebAssembly. La voie B se connecte à la passerelle sur votre ordinateur. Cette page est statique — rien n’envoie votre prompt à un serveur qui nous appartient.',
+    'demo.tabA': 'A · Dans le navigateur (ONNX)', 'demo.tabB': 'B · Ma passerelle locale',
+    'demo.detect': 'Analyse du matériel…', 'demo.detected': 'Détecté',
+    'demo.wasmOnly': 'Pas d’adaptateur WebGPU : le modèle ONNX passera par WebAssembly (plus lent, même résultat).',
+    'demo.tier': 'Palier de modèle', 'demo.load': 'Charger le modèle', 'demo.loading': 'Chargement',
+    'demo.ready': 'Modèle prêt', 'demo.loadFailed': 'Échec du chargement', 'demo.loadFirst': 'Chargez d’abord un modèle.',
+    'demo.prompt': 'Prompt', 'demo.placeholder': 'Expliquez en trois phrases ce que fait un cache KV.',
+    'demo.placeholder2': 'Quel modèle êtes-vous, et quel est mon budget RAM ?',
+    'demo.send': 'Envoyer', 'demo.failed': 'Requête échouée', 'demo.empty': '(réponse vide)',
+    'demo.chunks': 'fragments de flux',
+    'demo.noteA': 'Les poids sont téléchargés une fois en ONNX depuis le CDN Hugging Face puis mis en cache par le navigateur. GGUF est un format d’inférence, donc le navigateur utilise ONNX ; l’entraînement réel reste local.',
+    'demo.base': 'URL de la passerelle', 'demo.connect': 'Connecter', 'demo.probing': 'Test de la passerelle…',
+    'demo.notConnected': 'Pas encore connecté. Démarrez la passerelle, puis cliquez sur Connecter.',
+    'demo.online': 'Passerelle en ligne', 'demo.degraded': 'La passerelle répond mais n’est pas saine',
+    'demo.readyModels': 'modèles prêts', 'demo.offline': 'Passerelle injoignable',
+    'demo.offlineHint': 'Démarrez-la avec : localai-gateway --port 8090',
+    'demo.connectFirst': 'Connectez d’abord la passerelle.', 'demo.model': 'Modèle',
+    'demo.noteB': 'La passerelle autorise cette origine via CORS et rien d’autre. Si le navigateur bloque, servez la page via http://localhost (pas file://) ou ajoutez votre origine à LOCALAI_CORS_ORIGINS.',
+
+    'lab.title': 'Enseignant → élève, entraîné dans cet onglet',
+    'lab.sub': 'Un encodeur ONNX gelé transforme chaque tâche en vecteur de 384 dimensions. Un enseignant attribue la route (fast / duo / bigout). Une tête softmax est ensuite entraînée ici par SGD et mesurée sur des tâches de test avant et après. C’est un vrai entraînement de vrais poids — d’une tête, pas du LLM.',
+    'lab.run': 'Entraîner la tête et mesurer', 'lab.download': 'Télécharger les résultats (JSON)',
+    'lab.honest': 'Périmètre honnête : WebGPU accélère ici l’inférence. L’entraînement du modèle 1–2B lui-même se fait localement sur CPU (LoRA, voir le dépôt), car GGUF ne sert qu’à l’inférence et l’entraînement de milliards de paramètres dans un navigateur n’est pas viable.',
+    'lab.embedding': 'Embedding des tâches avec', 'lab.backend': 'Backend', 'lab.model': 'Modèle de base',
+    'lab.embedder': 'Encodeur', 'lab.beforeAcc': 'Précision avant entraînement', 'lab.afterAcc': 'Précision après entraînement',
+    'lab.trainAcc': 'Précision d’entraînement', 'lab.loss': 'Perte (par époque)', 'lab.task': 'Tâche', 'lab.want': 'Enseignant', 'lab.got': 'Élève',
+    'lab.done': 'Tête entraînée dans le navigateur', 'lab.limit': 'une tête n’est pas un LLM affiné, et cette différence reste visible.',
+
+    'guide.title': 'Zéro à héros',
+    'guide.sub': 'Huit étapes, dans l’ordre qui fonctionne réellement. Chaque étape indique la commande et ce que vous devez voir. Si une étape échoue, arrêtez-vous : toutes les suivantes en dépendent.',
+    'g1.t': '1 · Vérifier la machine', 'g1.p': 'Connaissez votre RAM et votre GPU avant de télécharger 9 Go. Le gestionnaire des tâches ne suffit pas ; la passerelle peut vous le dire.',
+    'g1.ok': 'Vous voyez les threads CPU, la RAM, le GPU et un tableau avec un statut par modèle.',
+    'g2.t': '2 · Placer un modèle sur le disque', 'g2.p': 'Un seul fichier GGUF suffit pour commencer. Gardez-le à côté de l’exe et listez-le dans models.yaml — l’exe est livré sans poids volontairement.',
+    'g3.t': '3 · Démarrer la passerelle', 'g3.p': 'Le serveur démarre en moins d’une seconde car aucun modèle n’est chargé avant la première requête.',
+    'g3.ok': 'healthz répond {"status":"ok"} ; /v1/models liste chaque modèle avec un statut réel.',
+    'g4.t': '4 · Première complétion', 'g4.p': 'N’importe quel client OpenAI fonctionne. Pointez l’URL de base vers la passerelle, la clé est libre — il n’y a pas de compte cloud.',
+    'g5.t': '5 · Utiliser le modèle duo', 'g5.p': 'Un modèle virtuel planifie avec le grand, exécute avec le rapide, puis vérifie avec le grand. Vous gardez un seul point d’accès et obtenez de meilleurs appels d’outils.',
+    'g6.t': '6 · Brancher votre éditeur', 'g6.p': 'Pointez votre agent de code vers http://127.0.0.1:8090/v1. Gardez le prompt système stable et déplacez le contexte volatil dans le premier message utilisateur — c’est ce qui fait fonctionner le cache de prompt.',
+    'g7.t': '7 · Mesurer, pas deviner', 'g7.p': 'Enregistrez prefill et decode séparément. Sur ce portable, le decode est limité par la bande passante : 5,9 tok/s sur un 27B en q4 est le plafond, pas un bug.',
+    'g8.t': '8 · Livrer', 'g8.p': 'Construisez l’exe mono-fichier, copiez models.yaml à côté et gardez les poids hors du dépôt. Déployez ensuite cette page statique et connectez-la à votre machine.',
+
+    'num.title': 'Mesuré, pas estimé',
+    'num.sub': 'Ryzen 7 7735HS, 24 Go LPDDR5X, Radeon 680M (RDNA2, 12 CU, Vulkan), Windows 11, build llama.cpp Vulkan. Chaque chiffre ci-dessous provient de cette machine et figure dans docs/perf-log.md.',
+    'num.h1': 'Quoi', 'num.h2': 'Résultat', 'num.h3': 'Pourquoi c’est important',
+    'num.r1': 'Les 88 Go/s théoriques de RAM sont le mur, pas le GPU',
+    'num.r2': 'Environ 50 % du pic FP32 — proche du plafond réaliste',
+    'num.r3': 'Le préfixe en cache est réutilisé au lieu d’être recalculé',
+    'num.r4': 'Voilà pourquoi le cache de préfixe est le plus gros gain',
+    'num.r5': 'Assez rapide pour être l’exécuteur dans la boucle duo',
+    'num.r6': 'Le routeur Système 1 : bon marché, déterministe, local',
+    'num.r7': 'Suite hermétique, aucun téléchargement de modèle en CI',
+    'num.note': 'Limites honnêtes : pas de cœurs matriciels sur RDNA2, donc pas de gain de type tensor core. Un modèle 27B ne peut pas servir 50 tok/s sur 88 Go/s de mémoire partagée, quel que soit le flag. La passerelle rend utilisable le modèle que vous avez ; elle n’invente pas de bande passante.',
+
+    'road.title': 'Ce qui marche, ce qui vient',
+    'road.c1t': 'Opérationnel aujourd’hui',
+    'road.c1a': 'Passerelle compatible OpenAI avec chargement paresseux et éviction LRU',
+    'road.c1b': 'Modèle duo : planifier → exécuter → vérifier, borné',
+    'road.c1c': 'Cache de préfixe avec état de slot llama-server persisté',
+    'road.c1d': 'EXE mono-fichier, sans poids',
+    'road.c1e': '14 serveurs MCP locaux avec contrôle au démarrage',
+    'road.c2t': 'Ensuite',
+    'road.c2a': 'MCP de capture RSI : chat → paires d’entraînement vérifiées',
+    'road.c2b': 'Distillation LoRA dans le routeur 1,5B, validée par un bench rapide',
+    'road.c2c': 'Petites expériences de diffusion de texte sur l’iGPU, mesurées honnêtement',
+    'road.c2d': 'Runner SWE Docker pour des épisodes d’agent vérifiés',
+    'road.c3t': 'Pas promis',
+    'road.c3a': '50–100 tok/s sur un modèle 27B avec ce matériel',
+    'road.c3b': 'Un raisonnement de qualité cloud avec un modèle 4B',
+    'road.c3c': 'Un modèle de frontière entraîné de zéro sur un iGPU',
+
+    'arch.title': 'Comment fonctionne le routage',
+    'arch.p': 'Les requêtes arrivent sur un seul point d’accès. L’ordonnanceur vérifie le budget RAM, démarre le modèle s’il n’est pas résident et maintient un compteur de références pour ne jamais tuer un modèle en pleine génération. Le contrôleur de mode choisit une voie : fast (petit modèle seul), duo (planifier, exécuter, vérifier) ou big-out (le petit résume, le grand écrit). Les erreurs montent de façon déterministe, donc un appel d’outil qui échoue finit sur le modèle le plus fort au lieu de boucler.',
+    'arch.t1': 'Origines CORS explicites, jamais de joker',
+    'arch.t2': 'Erreurs structurées : model_not_found, does_not_fit, model_unavailable',
+    'arch.t3': 'Passage en flux avec libération à la déconnexion',
+    'arch.t4': 'Les modèles non pris en charge sont listés avec leur vraie erreur',
+
+    'faq.title': 'Les questions qu’on pose vraiment',
+    'faq.q1': 'Mon prompt quitte-t-il mon ordinateur ?',
+    'faq.a1': 'Pas via cette page. Elle est statique et sans backend. Le modèle du navigateur tourne sur votre GPU ou CPU ; le mode local parle à 127.0.0.1. Le seul trafic réseau est le téléchargement initial du modèle et les assets CDN.',
+    'faq.q2': 'Pourquoi ONNX et pas GGUF dans le navigateur ?',
+    'faq.a2': 'GGUF est un format d’inférence conçu pour llama.cpp. Les navigateurs exécutent ONNX via WebGPU ou WebAssembly, donc la démo utilise des poids ONNX. GGUF reste le bon choix pour la passerelle locale.',
+    'faq.q3': 'Puis-je garder mon SDK OpenAI ?',
+    'faq.a3': 'Oui. Changez l’URL de base en http://127.0.0.1:8090/v1 et gardez votre code. Le streaming, les appels d’outils et l’endpoint models sont pris en charge.',
+    'faq.q4': 'Les modèles sont-ils dans l’EXE ?',
+    'faq.a4': 'Non, volontairement. L’exe n’est que la passerelle. Les poids vivent à côté, listés dans models.yaml, pour que les mises à jour ne retéléchargent jamais des gigaoctets.',
+    'faq.q5': 'Et AMD avec ROCm ?',
+    'faq.a5': 'Sur les APU RDNA2, ROCm s’est révélé environ six fois plus lent que Vulkan ici. La voie Vulkan est celle supportée ; l’expérience est dans le journal de performance.',
+    'foot.made': 'Construit sur un portable, mesuré sur un portable. Aucun compte cloud nécessaire.',
+    'foot.legal': 'Les poids ne sont pas inclus et conservent leurs licences. Cette page est une démo statique.',
+  };
+
+  const DICTS = { en, de, fr };
+  const STORE = 'localai.lang';
+  const META = {
+    en: ['LocalAI Gateway — your models, your machine, one API', 'Run a private OpenAI-compatible gateway for local GGUF models: duo routing, ONNX demo, single-file EXE.'],
+    de: ['LocalAI Gateway — deine Modelle, dein Rechner, eine API', 'Eine private, OpenAI-kompatible Passerette für lokale GGUF-Modelle: duo-Routing, ONNX-Demo, Single-File-EXE.'],
+    fr: ['LocalAI Gateway — vos modèles, votre machine, une API', 'Une passerelle privée compatible OpenAI pour modèles GGUF locaux : routage duo, démo ONNX, EXE mono-fichier.'],
+  };
+
+  let lang = localStorage.getItem(STORE) || (navigator.language || 'en').slice(0, 2);
+  if (!DICTS[lang]) lang = 'en';
+
+  function t(key) {
+    return DICTS[lang]?.[key] ?? en[key] ?? key;
+  }
+
+  function apply(next) {
+    lang = DICTS[next] ? next : 'en';
+    localStorage.setItem(STORE, lang);
+    document.documentElement.lang = lang;
+    document.title = META[lang][0];
+    document.querySelector('meta[name="description"]')?.setAttribute('content', META[lang][1]);
+    for (const el of document.querySelectorAll('[data-i18n]')) {
+      const v = t(el.dataset.i18n);
+      if (v) el.textContent = v;
+    }
+    for (const el of document.querySelectorAll('[data-i18n-ph]')) {
+      const v = t(el.dataset.i18nPh);
+      if (v) el.placeholder = v;
+    }
+    for (const b of document.querySelectorAll('.lang button')) {
+      b.classList.toggle('on', b.dataset.lang === lang);
+    }
+    document.dispatchEvent(new CustomEvent('langchange', { detail: { lang } }));
+  }
+
+  window.I18N = { t, apply, get lang() { return lang; } };
+  for (const b of document.querySelectorAll('.lang button')) {
+    b.addEventListener('click', () => apply(b.dataset.lang));
+  }
+  apply(lang);
+})();
