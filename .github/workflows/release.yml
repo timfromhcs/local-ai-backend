@@ -1,0 +1,116 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)release, e.g. v0.2.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  wheel:
+    name: wheel + sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip build
+      - run: python -m build
+      - run: python -m pytest -m "not real" -q -p no:cacheprovider
+      - uses: actions/upload-artifact@v7
+        with:
+          name: python-dist
+          path: dist/*
+
+  exe:
+    name: windows exe
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pyinstaller
+      - run: python -m PyInstaller --noconfirm --clean --distpath dist --workpath build packaging/localai-gateway.spec
+      - name: Verify the binary starts
+        shell: pwsh
+        run: |
+          $exe = "dist\localai-gateway.exe"
+          & $exe --version
+          $p = Start-Process -FilePath $exe -ArgumentList @("--port", "18091") -PassThru -WindowStyle Hidden
+          $ok = $false
+          for ($i = 0; $i -lt 40; $i++) {
+            Start-Sleep -Milliseconds 500
+            try { if ((Invoke-RestMethod -Uri "http://127.0.0.1:18091/healthz" -TimeoutSec 2).status -eq "ok") { $ok = $true; break } } catch { }
+          }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          if (-not $ok) { throw "release exe failed its smoke test" }
+      - name: Checksums
+        shell: pwsh
+        run: |
+          Get-FileHash dist\localai-gateway.exe -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  localai-gateway.exe" } |
+            Set-Content -Path dist\SHA256SUMS.txt -Encoding ascii
+          Get-Content dist\SHA256SUMS.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-exe
+          path: |
+            dist/localai-gateway.exe
+            dist/SHA256SUMS.txt
+
+  publish:
+    name: github release
+    runs-on: ubuntu-latest
+    needs: [wheel, exe]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v6
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Collect assets
+        run: |
+          mkdir -p release
+          cp artifacts/localai-gateway.exe release/ || true
+          cp artifacts/*.whl release/ || true
+          cp artifacts/*.tar.gz release/ || true
+          cp artifacts/SHA256SUMS.txt release/ || true
+          ls -la release
+      - name: Verify checksum
+        run: |
+          if [ -f release/SHA256SUMS.txt ] && [ -f release/localai-gateway.exe ]; then
+            (cd release && sha256sum -c SHA256SUMS.txt)
+          else
+            echo "checksum file or exe missing - failing rather than publishing unverified assets"
+            exit 1
+          fi
+      - uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          body: |
+            LocalAI Gateway ${{ github.event.inputs.tag || github.ref_name }}
+
+            - `localai-gateway.exe` — one-file Windows gateway. **No model weights inside.**
+              Put your GGUF next to it, list it in `models.yaml`, then run `localai-gateway.exe --doctor`.
+            - `*.whl` / `*.tar.gz` — Python package (`pip install localai-gateway` from the file).
+            - `SHA256SUMS.txt` — verify with `sha256sum -c SHA256SUMS.txt`.
+
+            The web demo is a separate static deployment; it is not part of this artifact.
+          files: |
+            release/localai-gateway.exe
+            release/*.whl
+            release/*.tar.gz
+            release/SHA256SUMS.txt

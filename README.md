@@ -10,9 +10,17 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/timfromhcs/local-ai-backend/actions/workflows/ci.yml"><img src="https://github.com/timfromhcs/local-ai-backend/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/timfromhcs/local-ai-backend/releases/latest"><img src="https://img.shields.io/github/v/release/timfromhcs/local-ai-backend" alt="Latest release" /></a>
+  <a href="https://local-ai-backend-blue.vercel.app"><img src="https://img.shields.io/badge/demo-live-6366f1" alt="Live demo" /></a>
+  <img src="https://img.shields.io/badge/python-3.13-3776ab" alt="Python 3.13" />
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT" />
+</p>
+
+<p align="center">
   <a href="https://local-ai-backend-blue.vercel.app"><b>Live demo</b></a> ·
   <a href="docs/perf-log.md">Performance log</a> ·
-  <a href="docs/superpowers/plans/2026-11-03-mcp-stack-and-release.md">Plan &amp; status</a>
+  <a href="docs/superpowers/plans/2026-11-03-v0.2.0-stable.md">Release plan</a>
 </p>
 
 ---
