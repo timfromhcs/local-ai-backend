@@ -33,7 +33,7 @@ def build_app(settings: Settings | None = None):
         return json.loads(prefix_file.read_text(encoding="utf8")) if prefix_file.exists() else None
 
     warmer = Warmer(settings.cache_dir, httpx.AsyncClient())
-    ledger = ledger_path(settings.cache_dir)
+    ledger = ledger_path(settings.cache_dir.parent)  # cache/backends.json, next to (not inside) the slot states
     # a killed gateway leaves its backends holding GPU memory; kill exactly those before spawning new
     killed = reap(ledger, gateway_pid=os.getpid())
     if killed:
