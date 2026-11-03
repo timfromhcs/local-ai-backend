@@ -77,13 +77,18 @@ Or download the built binary from
 [Releases](https://github.com/timfromhcs/local-ai-backend/releases/latest) and verify it:
 
 ```powershell
-gh release download v0.3.0 -p localai-gateway.exe -p SHA256SUMS.txt
+gh release download v0.4.0 -p localai-gateway.exe -p SHA256SUMS.txt
 Get-FileHash .\localai-gateway.exe -Algorithm SHA256   # compare with SHA256SUMS.txt
 .\localai-gateway.exe --version
+gh attestation verify .\localai-gateway.exe --repo timfromhcs/local-ai-backend
 ```
 
 The EXE is unsigned, so Windows SmartScreen warns on first run ("More info -> Run anyway").
 That is stated here instead of hidden; no code-signing certificate is configured yet.
+
+Every release also ships `sbom.cdx.json` (CycloneDX 1.5, generated from the installed
+distributions by `scripts/sbom.py`) plus build-provenance attestations from the separate
+`attest.yml` workflow, so the binary can be traced back to this repository's CI.
 
 ## Surfaces
 

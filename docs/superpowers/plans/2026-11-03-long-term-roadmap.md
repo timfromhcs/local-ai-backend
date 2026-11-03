@@ -43,6 +43,20 @@ written down.
   baseline. Catches scorer drift without a model.
 - Gate: all jobs green, SBOM valid CycloneDX, `gh attestation verify` documented.
 
+**Shipped (PR #16):** SBOM job in the release workflow (43 components, version read from the
+source tree so an editable install cannot lie), `attest.yml` as its own workflow with
+`id-token: write` + `attestations: write`, a `security` CI job (secret scan + pip-audit + SBOM
+smoke), Dependabot for pip/npm/actions, and the golden eval gate (16 pinned cases; every scorer
+has a passing and a failing case and the aggregate is pinned). The secret scanner immediately
+caught a fake token in a test fixture; fixtures now carry an explicit `secret-scan: allow` marker.
+
+**Dependabot triage (PR #24):** five updates applied in one reviewed change (checkout 6->7,
+download-artifact 6->8, setup-buildx 3->4, pydantic >=2.14.2, setuptools >=84.2.1). The five
+individual PRs were closed with that reason: sequential merges kept landing behind `main` because
+of the required up-to-date branches, and batching is one CI run instead of five. One PR was
+rejected outright: the Playwright bump to `1.65.0-alpha-1792021904000` is a timestamp-suffixed
+alpha, not a published release, and our pin must stay a version that exists.
+
 ### Phase B — dogfooding the RSI loop (next)
 - Run every autonomous cycle through `rsi-capture` (start → tool → verification → finalize).
 - Reach 20+ verified pairs, then a real LoRA run on the 1.5B router in `.venv-train`
