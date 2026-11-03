@@ -24,6 +24,8 @@ def _transport(request: httpx.Request) -> httpx.Response:
     payload = json.loads(request.content)
     prompt = payload["messages"][-1]["content"]
     answer = next((v for k, v in ANSWERS.items() if k in prompt), "unknown")
+    # the bench must disable thinking by default, otherwise a reasoning model returns empty content
+    assert payload.get("chat_template_kwargs", {}).get("enable_thinking") is False, payload
     return httpx.Response(200, json={
         "id": "x", "model": payload["model"],
         "choices": [{"index": 0, "message": {"role": "assistant", "content": answer}, "finish_reason": "stop"}],
@@ -88,6 +90,20 @@ def test_bench_reports_total_failure(registry):
     r = _client(registry, broken).post("/v1/bench", json={"model": "good"})
     assert r.status_code == 502
     assert r.json()["error"]["code"] == "bench_failed"
+
+
+def test_bench_can_opt_into_thinking(registry):
+    """`thinking: true` must pass through for models where the caller wants a trace."""
+    seen = {}
+
+    def spy(request):
+        payload = json.loads(request.content)
+        seen["kwargs"] = payload.get("chat_template_kwargs")
+        return _transport(httpx.Request("POST", request.url, content=json.dumps({**payload, "chat_template_kwargs": {"enable_thinking": False}})))
+
+    body = _client(registry, spy).post("/v1/bench", json={"model": "good", "thinking": True}).json()
+    assert seen["kwargs"] is None, "thinking=true must not force enable_thinking=false"
+    assert body["score"] >= 0
 
 
 def test_bench_partial_failure_still_scores(registry):

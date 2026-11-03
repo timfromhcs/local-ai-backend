@@ -203,16 +203,22 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
             return error(400, "wrong_kind", f"model {model_id!r} is a {spec.kind} model")
 
         max_tokens = int(body.get("max_tokens", 400))
+        thinking = bool(body.get("thinking", False))
         rows: list[dict] = []
         for task in BENCH_SUITES[suite]:
             started = time.perf_counter()
+            request = {
+                "model": model_id,
+                "messages": [{"role": "user", "content": task.prompt}],
+                "max_tokens": max_tokens,
+                "temperature": 0,
+            }
+            if not thinking:
+                # measured: Qwen3 spends the whole budget on reasoning and returns empty content,
+                # which scores 0 for every task. Scoring does not need a reasoning trace.
+                request["chat_template_kwargs"] = {"enable_thinking": False}
             try:
-                resp = await call_model(model_id, {
-                    "model": model_id,
-                    "messages": [{"role": "user", "content": task.prompt}],
-                    "max_tokens": max_tokens,
-                    "temperature": 0,
-                })
+                resp = await call_model(model_id, request)
                 msg = resp["choices"][0]["message"]
                 content = msg.get("content") or ""
                 if isinstance(content, list):
