@@ -52,7 +52,9 @@ class Workdir:
     root: Path = field(init=False)
 
     def __post_init__(self) -> None:
-        self.root = Path(tempfile.mkdtemp(prefix="localai-bench-"))
+        # resolve once: on Windows a temp path can be a short name (RUNNER~1) and a later
+        # resolve() of a child would then not compare equal to the root (CI caught this)
+        self.root = Path(tempfile.mkdtemp(prefix="localai-bench-")).resolve()
         for name, content in self.files.items():
             target = self.root / name
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -65,7 +67,7 @@ class Workdir:
             return f"error: {path} does not exist"
         if base.is_file():
             return base.name
-        names = sorted(p.relative_to(self.root).as_posix() + ("/" if p.is_dir() else "")
+        names = sorted(p.relative_to(base).as_posix() + ("/" if p.is_dir() else "")
                        for p in base.iterdir() if p.name != "__pycache__")
         return "\n".join(names) or "(empty)"
 
@@ -126,8 +128,7 @@ class Workdir:
 
     def _resolve(self, path: str) -> Path:
         candidate = (self.root / (path or ".")).resolve()
-        root = self.root.resolve()
-        if candidate != root and root not in candidate.parents:
+        if candidate != self.root and not candidate.is_relative_to(self.root):
             raise _OutsideRoot(f"{path} is outside the work directory")
         return candidate
 

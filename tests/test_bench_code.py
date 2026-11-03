@@ -51,6 +51,18 @@ def test_tests_pass_is_a_real_run(tmp_path):
         work.cleanup()
 
 
+def test_workdir_root_is_already_resolved():
+    """CI (windows-latest) caught the bug this guards: a temp path can be a short name (RUNNER~1),
+    so a later resolve() of a child did not compare equal to an unresolved root."""
+    work = Workdir({"a.txt": "x"})
+    try:
+        assert work.root == work.root.resolve()
+        assert work.list_files(".") == "a.txt"
+        assert str(work.root / "a.txt").startswith(str(work.root))
+    finally:
+        work.cleanup()
+
+
 def test_write_file_reports_and_truncates_reads():
     work = Workdir({"big.txt": "x" * 7000})
     try:
