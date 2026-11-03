@@ -192,6 +192,28 @@ try {
       });
       if (parseFloat(motion.duration) > 0 || motion.animation !== "none") note(`reduced-motion not honoured (${JSON.stringify(motion)})`);
       else ok("prefers-reduced-motion disables motion");
+
+      // PWA: manifest reachable and a service worker actually registers
+      const manifest = await page.evaluate(() => document.querySelector('link[rel="manifest"]')?.href ?? null);
+      if (!manifest) note("no manifest link");
+      else {
+        const res = await page.evaluate(async (href) => {
+          const r = await fetch(href);
+          const json = await r.json().catch(() => null);
+          return { status: r.status, display: json?.display ?? null };
+        }, manifest);
+        if (res.status !== 200 || res.display !== "standalone") note(`manifest not usable (${JSON.stringify(res)})`);
+        else ok("manifest reachable and standalone");
+      }
+
+      const sw = await page.evaluate(async () => {
+        if (!("serviceWorker" in navigator)) return { supported: false };
+        const reg = await navigator.serviceWorker.getRegistration();
+        return { supported: true, scope: reg?.scope ?? null, active: Boolean(reg?.active) };
+      });
+      if (!sw.supported) note("service worker unsupported");
+      else if (!sw.active) note("service worker did not activate");
+      else ok(`service worker active (${sw.scope})`);
     }
     await page.close();
   }

@@ -651,6 +651,39 @@ for (const id of ['#tier', '#gguf-model', '#base']) {
   $(id)?.addEventListener('change', rememberPrefs);
 }
 
+/* --------------------------------------------------------------- PWA shell
+   The service worker makes the page open offline (the shell is cached; models are
+   not). The install button only appears when the browser offers a prompt. */
+let installPrompt = null;
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  installPrompt = event;
+  const button = $('#install-app');
+  if (button) button.hidden = false;
+});
+
+window.addEventListener("appinstalled", () => {
+  installPrompt = null;
+  const button = $('#install-app');
+  if (button) button.hidden = true;
+  dataStatus(t('pwa.installed'), 'good');
+});
+
+$('#install-app')?.addEventListener('click', async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  try { await installPrompt.userChoice; } catch { /* user dismissed */ }
+  installPrompt = null;
+  $('#install-app').hidden = true;
+});
+
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname))) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => { /* offline support is optional */ });
+  });
+}
+
 /* ------------------------------------------------------------------ boot */
 restorePrefs();
 detectHardware();

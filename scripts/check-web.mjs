@@ -136,5 +136,40 @@ if (csp) {
 }
 if (!securityHeaders["x-frame-options"]) fail("missing X-Frame-Options");
 
+// 7. PWA: manifest, service worker and the link that makes them discoverable
+const manifestPath = path.join(web, "manifest.webmanifest");
+if (!fs.existsSync(manifestPath)) fail("missing web/manifest.webmanifest");
+else {
+  try {
+    const m = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    for (const key of ["name", "short_name", "start_url", "display", "background_color", "theme_color", "icons"]) {
+      if (!m[key]) fail(`manifest missing ${key}`);
+    }
+    const sizes = (m.icons ?? []).map((i) => i.sizes);
+    if (!sizes.includes("192x192")) fail("manifest needs a 192x192 icon");
+    if (!sizes.includes("512x512")) fail("manifest needs a 512x512 icon");
+    if (!(m.icons ?? []).some((i) => i.purpose === "maskable")) fail("manifest needs a maskable icon");
+    for (const icon of m.icons ?? []) {
+      if (!fs.existsSync(path.join(web, icon.src.replace(/^\//, "")))) fail(`manifest icon missing: ${icon.src}`);
+    }
+    ok(`manifest valid (${m.icons.length} icons, display ${m.display})`);
+  } catch (e) {
+    fail(`manifest does not parse: ${e.message}`);
+  }
+}
+if (!head.includes('rel="manifest"')) fail("index.html does not link the manifest");
+if (!head.includes("apple-touch-icon")) fail("index.html does not link an apple-touch-icon");
+
+const swPath = path.join(web, "sw.js");
+if (!fs.existsSync(swPath)) fail("missing web/sw.js");
+else {
+  const sw = fs.readFileSync(swPath, "utf8");
+  for (const needed of ["addEventListener(\"install\"", "addEventListener(\"fetch\"", '"/index.html"']) {
+    if (!sw.includes(needed)) fail(`sw.js missing ${needed}`);
+  }
+  if (/\.gguf|huggingface/.test(sw)) fail("the service worker must not cache model weights");
+  ok("service worker precaches the shell and ignores models");
+}
+
 console.log(problems.length ? `\n${problems.length} problem(s)` : "\nweb check: PASS");
 process.exit(problems.length ? 1 : 0);

@@ -37,6 +37,7 @@
     'demo.connectFirst': 'Connect to the gateway first.', 'demo.model': 'Model',
     'demo.noteB': 'The gateway allows this origin through CORS and nothing else. If the browser blocks the call, serve the page over http://localhost (not file://) or add your origin to LOCALAI_CORS_ORIGINS.',
 
+    'pwa.install': 'Install app', 'pwa.installed': 'Installed. It now opens offline.',
     'data.local': 'Your data stays in this browser. Nothing is uploaded.',
     'data.export': 'Export JSON', 'data.import': 'Import JSON', 'data.clear': 'Delete all',
     'data.exported': 'Export ready - check your downloads.', 'data.imported': 'Import applied.',
@@ -151,6 +152,7 @@
     'demo.connectFirst': 'Verbinde dich zuerst mit dem Gateway.', 'demo.model': 'Modell',
     'demo.noteB': 'Das Gateway erlaubt genau diesen Origin per CORS. Wenn der Browser blockt, liefere die Seite über http://localhost aus (nicht file://) oder ergänze deinen Origin in LOCALAI_CORS_ORIGINS.',
 
+    'pwa.install': 'App installieren', 'pwa.installed': 'Installiert. Öffnet jetzt auch offline.',
     'data.local': 'Deine Daten bleiben in diesem Browser. Nichts wird hochgeladen.',
     'data.export': 'JSON exportieren', 'data.import': 'JSON importieren', 'data.clear': 'Alles löschen',
     'data.exported': 'Export bereit - siehe Downloads.', 'data.imported': 'Import übernommen.',
@@ -265,6 +267,7 @@
     'demo.connectFirst': 'Connectez d’abord la passerelle.', 'demo.model': 'Modèle',
     'demo.noteB': 'La passerelle autorise cette origine via CORS et rien d’autre. Si le navigateur bloque, servez la page via http://localhost (pas file://) ou ajoutez votre origine à LOCALAI_CORS_ORIGINS.',
 
+    'pwa.install': 'Installer l’app', 'pwa.installed': 'Installée. Elle s’ouvre désormais hors ligne.',
     'data.local': 'Vos données restent dans ce navigateur. Rien n’est envoyé.',
     'data.export': 'Exporter JSON', 'data.import': 'Importer JSON', 'data.clear': 'Tout supprimer',
     'data.exported': 'Export prêt - voir les téléchargements.', 'data.imported': 'Import appliqué.',
