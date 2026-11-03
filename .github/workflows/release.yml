@@ -17,7 +17,7 @@ jobs:
     name: wheel + sdist
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -34,7 +34,7 @@ jobs:
     name: windows exe
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -74,7 +74,7 @@ jobs:
     name: sbom (cyclonedx)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -102,8 +102,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [wheel, exe, sbom]
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v6
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
