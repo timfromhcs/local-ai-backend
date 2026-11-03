@@ -145,8 +145,19 @@ try {
       scrollW: document.documentElement.scrollWidth,
       clientW: document.documentElement.clientWidth,
     }));
-    if (overflow.scrollW > overflow.clientW + 1) note(`${width}px: horizontal overflow ${overflow.scrollW} > ${overflow.clientW}`);
-    else ok(`${width}px: no horizontal overflow`);
+    if (overflow.scrollW > overflow.clientW + 1) {
+      const widest = await page.evaluate(() => {
+        const out = [];
+        for (const el of document.querySelectorAll("*")) {
+          const r = el.getBoundingClientRect();
+          if (r.right > document.documentElement.clientWidth + 1) {
+            out.push({ tag: el.tagName.toLowerCase(), cls: (el.className || "").toString().slice(0, 30), right: Math.round(r.right) });
+          }
+        }
+        return out.slice(0, 5);
+      });
+      note(`${width}px: horizontal overflow ${overflow.scrollW} > ${overflow.clientW} :: ${JSON.stringify(widest)}`);
+    } else ok(`${width}px: no horizontal overflow`);
 
     if (width === 390) {
       const targets = await page.evaluate(new Function(`return (${TARGETS_JS})()`));

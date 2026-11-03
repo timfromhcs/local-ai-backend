@@ -49,8 +49,8 @@ p { margin: 0 0 1rem; }
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
 }
-.head-inner { display: flex; align-items: center; gap: 1.2rem; min-height: 64px; }
-.brand { display: flex; align-items: center; gap: .55rem; font-weight: 600; color: var(--text); letter-spacing: -.01em; }
+.head-inner { display: flex; align-items: center; gap: 1.2rem; min-height: 64px; flex-wrap: wrap; row-gap: .5rem; }
+.brand { display: flex; align-items: center; gap: .55rem; font-weight: 600; color: var(--text); letter-spacing: -.01em; min-width: 0; white-space: nowrap; }
 .brand b { font-weight: 800; }
 .brand.small { font-size: .95rem; color: var(--muted); }
 .nav { display: flex; gap: 1.1rem; margin-left: auto; font-size: .93rem; }
