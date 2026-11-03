@@ -53,6 +53,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--port", type=int, default=None, help="port (default 8090, env LOCALAI_PORT)")
     parser.add_argument("--doctor", action="store_true", help="print hardware/model status and exit")
     parser.add_argument("--self-test", action="store_true", help="exercise the API in-process (no port, no model)")
+    parser.add_argument("--check-update", action="store_true", help="ask GitHub whether a newer release exists (only network call)")
     parser.add_argument("--version", action="store_true", help="print version and exit")
     args = parser.parse_args(argv)
 
@@ -61,6 +62,10 @@ def main(argv: list[str] | None = None) -> None:
 
         print(__version__)
         return
+    if args.check_update:
+        from .update import main as check_update
+
+        raise SystemExit(check_update())
     if args.self_test:
         from .selftest import main as self_test
 

@@ -80,6 +80,7 @@ Or download the built binary from
 gh release download v0.4.0 -p localai-gateway.exe -p SHA256SUMS.txt
 Get-FileHash .\localai-gateway.exe -Algorithm SHA256   # compare with SHA256SUMS.txt
 .\localai-gateway.exe --version
+.\localai-gateway.exe --check-update     # the only command that touches the network
 gh attestation verify .\localai-gateway.exe --repo timfromhcs/local-ai-backend
 ```
 

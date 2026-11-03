@@ -19,7 +19,7 @@ dependencies = [
 localai-gateway = "localai_gateway.__main__:main"
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio", "onnxruntime", "onnx"]
+dev = ["pytest", "pytest-asyncio", "pytest-cov", "onnxruntime", "onnx"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
