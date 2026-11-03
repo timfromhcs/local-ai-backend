@@ -184,10 +184,29 @@ authentication by design.
 ```powershell
 python -m bench.run --gateway http://127.0.0.1:8090 --model qwen3-4b --suite fast
 python -m bench.run --gateway http://127.0.0.1:8090 --model qwen3-4b --suite long
+python -m bench.run --gateway http://127.0.0.1:8090 --model qwen3-4b --suite tools
+python -m bench.run --gateway http://127.0.0.1:8090 --model qwen3-4b --suite hard
 ```
 
 Scoring is deterministic Python (routing words, tool-call shape, strict JSON, arithmetic,
-honesty, concision, patch shape). No LLM judge, so results are cheap and repeatable.
+honesty, concision, patch shape). No LLM judge, so results are cheap and repeatable. The `tools`
+suite scores the message's `tool_calls` - prose that merely describes a call scores 0.
+
+A lane can be demanded instead of hoped for: send `localai_mode: "fast" | "duo" | "bigout"` with a
+chat request, or `mode` with a bench run. Anything else is a structured `400 bad_mode`, and the
+field is stripped before forwarding, so no backend ever sees it.
+
+What the numbers actually say (`docs/bench-log.md`, measured on this laptop):
+
+| Suite | 4B alone | duo automatic | duo forced (`mode: "duo"`) |
+|---|---|---|---|
+| `tools` (2 tasks) | 1.0 (178 s cold) | 1.0 in 3.7 s | 1.0 in 30.1 s |
+| `hard` (3 tasks) | 0.333 | 0.333 in 5.3 s | **0.333** in 18.5 s |
+
+The second row is the honest one: the plan/execute/verify loop runs and costs time, but it does
+**not** repair a capability gap. A plan cannot add knowledge the executor lacks, and a verifier
+without ground truth replies `VERIFIED` to a wrong answer. The loop can only earn its cost where
+correctness is checkable (run the tests, call the tool).
 
 ## MCP stack
 
@@ -203,14 +222,14 @@ localai-gateway (7), blender, memory, ast-grep, context7, fetch.
 src/localai_gateway/   gateway, scheduler, supervisor, duo, modes, warmup,
                        placement (SAT), hardware (autotune), config
 src/rsi_lab/           trajectory scrub/harvest/clean/split + promotion gate
-bench/                 deterministic benchmark suite (fast + long)
+bench/                 deterministic benchmark suite (fast, long, tools, hard)
 web/                   static ONNX/GGUF/WASM demo, EN/DE/FR, lab, IndexedDB, SEO files
 api/                   Dockerfile + compose (API shell, no weights)
 packages/npm/          launcher that downloads and verifies the release binary
 servers/               localai-gateway-mcp
 packaging/             PyInstaller spec + entry point
 scripts/               build-exe, check-web, probes, bonsai-server
-tests/                 180 hermetic tests (gateway, scheduler, duo, modes, RSI, CORS,
+tests/                 315 hermetic tests (gateway, scheduler, duo, modes, RSI, CORS,
                        bench, placement, autotune, surfaces, release hygiene)
 docs/                  perf log, plans, design specs, inventory
 models.yaml            model registry (files, memory estimates, measured flags)
