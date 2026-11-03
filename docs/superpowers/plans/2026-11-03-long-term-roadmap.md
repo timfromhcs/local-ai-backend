@@ -63,6 +63,13 @@ and rejects request bodies above `LOCALAI_MAX_BODY_MB` (default 8) with `413 pay
 before reading them. The container opts in explicitly and visibly; 7 tests cover the guard, the
 limit and the error envelope.
 
+**Update path and coverage (PR #40):** `--check-update` asks the public releases API (the only
+network call in the CLI, never automatic) and reports three honest states including "could not
+check". A coverage floor of 85% was added to CI — and it immediately exposed a repository bug:
+`.gitignore` listed `rsi/`, which also matched `tests/rsi/`, so three test files had never been
+committed. CI was running 29 fewer tests than the working tree (79.5% vs 88%). Fixed with `/rsi/`
+plus `tests/test_ignore_rules.py`, which now fails if any test file is git-ignored.
+
 ### Phase B — dogfooding the RSI loop (next)
 - Run every autonomous cycle through `rsi-capture` (start → tool → verification → finalize).
 - Reach 20+ verified pairs, then a real LoRA run on the 1.5B router in `.venv-train`
