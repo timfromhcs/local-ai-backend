@@ -79,3 +79,45 @@ Honest limit: Vulkan on a Radeon 680M has no matrix cores; measured ~1.7 TFLOP/s
 
 ## 5. Release gate
 `pytest -m "not real"` green · exe smoke tested · web demo verified in a real browser · secret scan clean · `.gitignore` covers models/bin/caches/training artifacts · README states only measured facts · then GitHub + Vercel, each once, in order.
+
+---
+
+# Final status (2026-11-03, after autonomous execution)
+
+## Verified results
+
+| Gate | Result | Evidence |
+|---|---|---|
+| Unit tests | **133 passed** | `pytest -m "not real"` → 46 s, no model downloads |
+| Single-file EXE | **17.6 MB built, smoke tested** | `--version`, `--doctor`, `/healthz` answered on :18090 |
+| CORS | **7 tests**, real-socket check included | explicit origins + `*.vercel.app`, no wildcard |
+| MCP fleet | **14/14 reachable** | `scripts/mcp-probe.mjs` → `mcp-status.json` |
+| Jev server | **real completion verified** | `jev-guard.ps1` posts to :8080 with `Bearer local` |
+| Web demo (local) | 8 sections, 3 SVG assets, 0 console errors | Playwright at 1440 px and 390 px, no horizontal overflow |
+| Web demo (production) | **https://local-ai-backend-blue.vercel.app** | Playwright: title/lang/sections/images verified |
+| Repository | **https://github.com/timfromhcs/local-ai-backend** (public, `main`) | first commit `b44f35e` |
+| Secret scan | clean | ghp_/sk-/AKIA/Bearer scan over all tracked files |
+
+## What changed against the original plan
+
+- **M5 and M6 are done** in this pass (EXE + web demo + deploy), which the plan had after M4.
+- **M3 (Docker SWE runner) and M4 (LoRA train/merge/bench) remain open.** The benchmark suite
+  (`bench/run.py`) is the precondition for M4's promotion gate and is now in place.
+- The requested "RSI MCP that writes training logs from chats" is **not** implemented yet; it is
+  specified as RSI Lab v3 stage 1 in section 4 above.
+- Requested "text-diffusion model trained from scratch, Jev first, then general reasoning" is
+  recorded as a staged research item. No code exists, and no benchmark claim is made about it.
+- In-browser training of the LLM itself was **not** built, because it is not feasible: GGUF is
+  inference-only, ONNX in the browser runs inference, and browser training of 1–2 B parameters is
+  not viable. What *was* built and measured is real head training on frozen ONNX embeddings plus
+  prompt-level variant selection — honest, small, reproducible.
+
+## Known open items
+
+1. `opencode.jsonc` in the repository no longer defines MCP servers; the global config owns them.
+   A fresh clone on another machine must run `scripts/` equivalents for its own MCP setup.
+2. `training/gateway_sft.jsonl` is one small sample file; no training run has been executed.
+3. The Docker SWE runner needs `Docker` + a SWE-bench image; not started in this pass.
+4. The Vercel project uses `framework: null` and an empty build command; if the dashboard preset
+   is changed to Vite, `npm ci` fails again. Keep it as "Other".
+
