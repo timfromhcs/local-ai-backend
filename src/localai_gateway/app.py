@@ -26,6 +26,7 @@ from .registry import ModelSpec
 from .scheduler import DoesNotFit, ModelUnavailable
 from .warmup import normalize_for_cache
 from .supervisor import BackendStartError
+from rsi_lab.capture import CaptureError, CaptureLog
 
 
 def error(status: int, code: str, reason: str, **extra: Any) -> JSONResponse:
@@ -115,6 +116,7 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
             await scheduler.release(model_id)
 
     cfg = duo_config or DuoConfig()
+    captures = CaptureLog(settings.model_dir / "rsi")
 
     async def ask_jev(prompt: str) -> str | None:
         """Mode check-up on the fast external model (Jev); any failure => heuristics decide."""
@@ -221,6 +223,54 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
         if all(r["error"] for r in rows):
             return error(502, "bench_failed", "every task failed", first=rows[0]["error"])
         return JSONResponse(BenchResult(model=model_id, suite=suite, rows=rows).as_dict())
+
+    @app.post("/v1/rsi/sessions")
+    async def rsi_start(request: Request) -> JSONResponse:
+        """Start (or resume) a capture session. Append-only JSONL, scrubbed on write."""
+        body = await request.json() if await request.body() else {}
+        session = (body or {}).get("session") or f"rsi-{int(time.time())}"
+        try:
+            events = captures.events(session)
+        except CaptureError as exc:
+            return error(400, "capture_error", str(exc))
+        return JSONResponse({"session": session, "events": len(events), "root": str(captures.root)})
+
+    @app.post("/v1/rsi/events")
+    async def rsi_event(request: Request) -> JSONResponse:
+        try:
+            body = await request.json()
+        except ValueError:
+            return error(400, "bad_request", "body is not valid JSON")
+        session = body.pop("session", None) if isinstance(body, dict) else None
+        if not session:
+            return error(422, "missing_session", "field 'session' is required")
+        try:
+            record = captures.append(session, body)
+        except CaptureError as exc:
+            return error(400, "capture_error", str(exc))
+        return JSONResponse({"ok": True, "session": session, "recorded": record["type"]})
+
+    @app.post("/v1/rsi/finalize")
+    async def rsi_finalize(request: Request) -> JSONResponse:
+        body = await request.json()
+        session = (body or {}).get("session")
+        if not session:
+            return error(422, "missing_session", "field 'session' is required")
+        try:
+            return JSONResponse(captures.finalize(session))
+        except CaptureError as exc:
+            return error(400, "capture_error", str(exc))
+
+    @app.get("/v1/rsi/pairs")
+    async def rsi_pairs(session: str) -> JSONResponse:
+        try:
+            return JSONResponse({"session": session, "pairs": captures.pairs(session)})
+        except CaptureError as exc:
+            return error(400, "capture_error", str(exc))
+
+    @app.get("/v1/rsi/stats")
+    async def rsi_stats() -> JSONResponse:
+        return JSONResponse(captures.stats())
 
     @app.get("/v1/autotune")
     async def autotune(model: str, ctx: int = 16384) -> JSONResponse:

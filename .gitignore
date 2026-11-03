@@ -22,3 +22,4 @@ web/.vercel/
 /*.png
 packages/npm/vendor/
 **/node_modules/
+rsi/

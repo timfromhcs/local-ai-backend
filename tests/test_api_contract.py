@@ -22,6 +22,11 @@ STABLE_PATHS = [
     "/v1/bench",
     "/v1/placement",
     "/v1/autotune",
+    "/v1/rsi/sessions",
+    "/v1/rsi/events",
+    "/v1/rsi/finalize",
+    "/v1/rsi/pairs",
+    "/v1/rsi/stats",
 ]
 
 
