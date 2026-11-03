@@ -18,6 +18,7 @@ import httpx
 
 from localai_gateway.benchscore import (  # noqa: F401
     FAST,
+    HARD_TASKS,
     TOOL_TASKS,
     BenchResult,
     BenchTask,
@@ -38,7 +39,7 @@ LONG: tuple[BenchTask, ...] = FAST + (
               "reasoning"),
 )
 
-SUITES: dict[str, tuple[BenchTask, ...]] = {"fast": FAST, "long": LONG, "tools": TOOL_TASKS}
+SUITES: dict[str, tuple[BenchTask, ...]] = {"fast": FAST, "long": LONG, "tools": TOOL_TASKS, "hard": HARD_TASKS}
 
 
 def complete(client: httpx.Client, base_url: str, model: str, prompt: str, max_tokens: int = 400,
