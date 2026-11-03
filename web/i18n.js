@@ -63,6 +63,12 @@
     'g6.t': '6 · Wire your editor', 'g6.p': 'Point your coding agent at http://127.0.0.1:8090/v1. Keep the system prompt stable and move volatile context into the first user message — that is what makes the prompt cache work.',
     'g7.t': '7 · Measure, do not guess', 'g7.p': 'Record prefill and decode separately. On this laptop decode is bandwidth-bound: 5.9 tok/s for a 27B model at q4 is the ceiling, not a bug.',
     'g8.t': '8 · Ship it', 'g8.p': 'Build the single-file exe, copy models.yaml next to it, and keep the weights out of the repository. Then deploy this static page and connect it to your machine.',
+    'g9.t': '9 · Let it decide what fits',
+    'g9.p': 'Two endpoints answer the questions you would otherwise guess: which models can be resident together, and which llama.cpp flags suit your GPU. Both explain themselves.',
+    'g9.ok': 'Placement returns the largest set that fits your RAM; autotune names a reason per flag; bench returns a deterministic score.',
+    'g10.t': '10 · Prove and improve',
+    'g10.p': 'Verify the build without a model or a port, check whether a newer release exists, and let verified work become training data — never unverified guesses.',
+    'g10.ok': 'Self-test prints six checks; check-update is fail-soft offline; the RSI cycle refuses to train until 20 verified pairs exist.',
 
     'num.title': 'Measured, not estimated',
     'num.sub': 'Ryzen 7 7735HS, 24 GB LPDDR5X, Radeon 680M (RDNA2, 12 CU, Vulkan), Windows 11, llama.cpp Vulkan build. Every number below was produced on this machine and is stored in docs/perf-log.md.',
@@ -178,6 +184,12 @@
     'g6.t': '6 · Editor anbinden', 'g6.p': 'Richte deinen Coding-Agenten auf http://127.0.0.1:8090/v1. Halte den System-Prompt stabil und verschiebe flüchtigen Kontext in die erste User-Nachricht — genau das macht den Prompt-Cache wirksam.',
     'g7.t': '7 · Messen statt raten', 'g7.p': 'Erfasse Prefill und Decode getrennt. Auf diesem Laptop ist Decode bandbreitenbegrenzt: 5,9 tok/s bei einem 27B-Modell in q4 sind die Obergrenze, kein Bug.',
     'g8.t': '8 · Ausliefern', 'g8.p': 'Baue die Single-File-EXE, kopiere models.yaml daneben und halte die Gewichte aus dem Repository. Dann diese statische Seite deployen und mit deinem Rechner verbinden.',
+    'g9.t': '9 · Das System entscheiden lassen, was passt',
+    'g9.p': 'Zwei Endpunkte beantworten die Fragen, die man sonst rät: welche Modelle gleichzeitig im Speicher liegen können und welche llama.cpp-Flags zu deiner GPU passen. Beide begründen sich selbst.',
+    'g9.ok': 'Placement liefert die größte Menge, die in dein RAM passt; Autotune nennt einen Grund pro Flag; Bench liefert eine deterministische Punktzahl.',
+    'g10.t': '10 · Beweisen und verbessern',
+    'g10.p': 'Prüfe den Build ohne Modell und ohne Port, schau nach einer neueren Version und lass verifizierte Arbeit zu Trainingsdaten werden — niemals ungeprüfte Vermutungen.',
+    'g10.ok': 'Self-Test zeigt sechs Prüfungen; Check-Update scheitert offline leise; der RSI-Zyklus trainiert erst ab 20 verifizierten Paaren.',
 
     'num.title': 'Gemessen, nicht geschätzt',
     'num.sub': 'Ryzen 7 7735HS, 24 GB LPDDR5X, Radeon 680M (RDNA2, 12 CU, Vulkan), Windows 11, llama.cpp Vulkan-Build. Jede Zahl unten entstand auf dieser Maschine und steht in docs/perf-log.md.',
@@ -293,6 +305,12 @@
     'g6.t': '6 · Brancher votre éditeur', 'g6.p': 'Pointez votre agent de code vers http://127.0.0.1:8090/v1. Gardez le prompt système stable et déplacez le contexte volatil dans le premier message utilisateur — c’est ce qui fait fonctionner le cache de prompt.',
     'g7.t': '7 · Mesurer, pas deviner', 'g7.p': 'Enregistrez prefill et decode séparément. Sur ce portable, le decode est limité par la bande passante : 5,9 tok/s sur un 27B en q4 est le plafond, pas un bug.',
     'g8.t': '8 · Livrer', 'g8.p': 'Construisez l’exe mono-fichier, copiez models.yaml à côté et gardez les poids hors du dépôt. Déployez ensuite cette page statique et connectez-la à votre machine.',
+    'g9.t': '9 · Laisser le système décider ce qui tient',
+    'g9.p': 'Deux endpoints répondent aux questions qu’on devine d’habitude : quels modèles peuvent être résidents ensemble et quels drapeaux llama.cpp conviennent à votre GPU. Les deux s’expliquent.',
+    'g9.ok': 'Placement renvoie le plus grand ensemble qui tient dans votre RAM ; autotune justifie chaque drapeau ; bench renvoie un score déterministe.',
+    'g10.t': '10 · Prouver et améliorer',
+    'g10.p': 'Vérifiez le build sans modèle ni port, regardez s’il existe une version plus récente et laissez le travail vérifié devenir des données d’entraînement — jamais des suppositions.',
+    'g10.ok': 'Self-test affiche six contrôles ; check-update échoue proprement hors ligne ; le cycle RSI refuse d’entraîner avant 20 paires vérifiées.',
 
     'num.title': 'Mesuré, pas estimé',
     'num.sub': 'Ryzen 7 7735HS, 24 Go LPDDR5X, Radeon 680M (RDNA2, 12 CU, Vulkan), Windows 11, build llama.cpp Vulkan. Chaque chiffre ci-dessous provient de cette machine et figure dans docs/perf-log.md.',
@@ -348,9 +366,9 @@
   const DICTS = { en, de, fr };
   const STORE = 'localai.lang';
   const META = {
-    en: ['LocalAI Gateway — your models, your machine, one API', 'Run a private OpenAI-compatible gateway for local GGUF models: duo routing, ONNX demo, single-file EXE.'],
-    de: ['LocalAI Gateway — deine Modelle, dein Rechner, eine API', 'Eine private, OpenAI-kompatible Passerette für lokale GGUF-Modelle: duo-Routing, ONNX-Demo, Single-File-EXE.'],
-    fr: ['LocalAI Gateway — vos modèles, votre machine, une API', 'Une passerelle privée compatible OpenAI pour modèles GGUF locaux : routage duo, démo ONNX, EXE mono-fichier.'],
+    en: ['LocalAI Gateway — your models, your machine, one address', 'Run the AI models already on your disk behind one local address: lazy loading, SAT placement, device autotune, a WebGPU/ONNX/WASM demo and a single-file EXE.'],
+    de: ['LocalAI Gateway — deine Modelle, dein Rechner, eine Adresse', 'Fahre die KI-Modelle auf deiner Platte hinter einer lokalen Adresse: Lazy Loading, SAT-Placement, Geräte-Autotune, WebGPU/ONNX/WASM-Demo und eine Single-File-EXE.'],
+    fr: ['LocalAI Gateway — vos modèles, votre machine, une adresse', 'Faites tourner les modèles de votre disque derrière une adresse locale : chargement paresseux, placement SAT, autotune par appareil, démo WebGPU/ONNX/WASM et un EXE mono-fichier.'],
   };
 
   let lang = localStorage.getItem(STORE) || (navigator.language || 'en').slice(0, 2);

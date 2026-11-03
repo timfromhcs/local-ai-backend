@@ -305,6 +305,23 @@ python -m bench.run --gateway http://127.0.0.1:8090 --model qwen3-4b</code></pre
           <pre><code>powershell -File scripts/build-exe.ps1
 vercel deploy --prod web</code></pre>
         </li>
+        <li>
+          <h3 data-i18n="g9.t">9 · Let it decide what fits</h3>
+          <p data-i18n="g9.p">Two endpoints answer the questions you would otherwise guess: which models can be resident together, and which llama.cpp flags suit your GPU. Both explain themselves.</p>
+          <pre><code>curl http://127.0.0.1:8090/v1/placement
+curl "http://127.0.0.1:8090/v1/autotune?model=qwen3-4b"
+curl -X POST http://127.0.0.1:8090/v1/bench -H "content-type: application/json" ^
+  -d "{\"model\":\"qwen3-4b\",\"suite\":\"fast\"}"</code></pre>
+          <p class="ok" data-i18n="g9.ok">Placement returns the largest set that fits your RAM; autotune names a reason per flag; bench returns a deterministic score.</p>
+        </li>
+        <li>
+          <h3 data-i18n="g10.t">10 · Prove and improve</h3>
+          <p data-i18n="g10.p">Verify the build without a model or a port, check whether a newer release exists, and let verified work become training data — never unverified guesses.</p>
+          <pre><code>localai-gateway --self-test
+localai-gateway --check-update
+python -m rsi_lab.cycle --min-pairs 20</code></pre>
+          <p class="ok" data-i18n="g10.ok">Self-test prints six checks; check-update is fail-soft offline; the RSI cycle refuses to train until 20 verified pairs exist.</p>
+        </li>
       </ol>
     </div>
   </section>
