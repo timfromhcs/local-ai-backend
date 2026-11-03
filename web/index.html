@@ -93,15 +93,14 @@
     <div class="wrap hero-grid">
       <div class="hero-copy">
         <p class="eyebrow" data-i18n="hero.eyebrow">Local first · OpenAI-compatible · Windows + Vulkan</p>
-        <h1 data-i18n="hero.title">Your models. Your machine. One API.</h1>
+        <h1 data-i18n="hero.title">Your models. Your machine. One address.</h1>
         <p class="lead" data-i18n="hero.lead">
-          LocalAI Gateway puts a single OpenAI-compatible endpoint in front of the models already on your
-          disk. It loads them lazily, keeps the ones that fit, evicts the rest, and routes each request to
-          the cheapest model that can answer it.
+          Run the models already on your disk behind one local address. It picks the cheapest one per
+          request; nothing leaves your machine.
         </p>
         <div class="cta">
           <a class="btn primary" href="#demo" data-i18n="hero.cta1">Try it in the browser</a>
-          <a class="btn" href="#guide" data-i18n="hero.cta2">Build it in 20 minutes</a>
+          <a class="btn" href="#guide" data-i18n="hero.cta2">Read the 20-minute guide</a>
         </div>
         <ul class="facts">
           <li><b>14</b> <span data-i18n="hero.fact1">MCP servers, all local</span></li>
@@ -119,9 +118,8 @@
     <div class="wrap">
       <h2 data-i18n="demo.title">Live demo: two ways to talk to a model</h2>
       <p class="sub" data-i18n="demo.sub">
-        Path A runs a small ONNX model entirely inside this tab: WebGPU when the browser has it, WebAssembly
-        everywhere else. Path B connects to the gateway on your own computer. This page is static — nothing
-        sends your prompt to a server we control.
+        Two ways to talk to a model. In the tab: a small model running in your browser, with no server.
+        Or connect this page to the gateway on your computer. Nothing is sent to us; the page is static.
       </p>
 
       <div class="tabs" role="tablist">
