@@ -1,0 +1,25 @@
+# Local stack: gateway API in a container, models and llama.cpp stay on the host.
+#   docker compose up --build
+#   curl http://127.0.0.1:8090/healthz
+services:
+  gateway:
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+    image: ghcr.io/timfromhcs/local-ai-backend:local
+    ports:
+      - "8090:8090"
+    environment:
+      LOCALAI_PORT: "8090"
+      LOCALAI_CORS_ORIGINS: "http://localhost:4173,http://127.0.0.1:4173,http://localhost:3000"
+    volumes:
+      # read-only: the gateway reads models.yaml and starts host binaries only when
+      # LOCALAI_HOME points at a mounted tree; inside a container it proxies instead.
+      - ./models.yaml:/app/models.yaml:ro
+      - ./cache:/app/cache
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8090/healthz', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped

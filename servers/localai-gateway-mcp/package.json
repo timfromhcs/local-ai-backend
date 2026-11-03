@@ -1,0 +1,10 @@
+{
+  "name": "localai-gateway-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server for a running LocalAI Gateway (status, models, chat, benchmark)",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2"
+  }
+}
