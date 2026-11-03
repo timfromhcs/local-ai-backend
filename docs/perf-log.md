@@ -49,3 +49,30 @@ Speed-up ~26x on time-to-first-token without touching the model or the GPU path.
 | Fresh gateway start: load 4B + restore slot from SSD (1.2 GB) + request | **8.5 s total**, restore 0.6 s | cache_n 16235 / new 30 |
 Design: `<env>` block moved to the first user message (chat templates render tool schemas right after the system text, so anything volatile in the system prompt kills the cached tool section); stable boundary = common prefix of two renderings; slot state saved/restored via `--slot-save-path` on SSD (`cache/slots/*.bin`).
 Open check: first-ever cold compute showed cache_n 12141 on the first request (second request fine); re-verify on a clean cache.
+
+## Speculative decoding measurement (2026-11-03)
+
+Measured with `scripts/measure-speculative.ps1` (same binary, `-ngl 99 -fa on -t 8 -ub 256 -c 2048`,
+greedy, 64 tokens, fresh prompt so the prefix cache cannot fake the prefill).
+
+| Target | Config | Decode tok/s | Prefill tok/s | Draft acceptance |
+|---|---|---|---|---|
+| Qwen2.5-Coder 1.5B q4 | baseline | **63.83** | 307.0 | – |
+| Qwen2.5-Coder 1.5B q4 | + 0.5B q3 drafter, `--spec-type draft-simple`, n-max 3 | **38.53 (-40 %)** | 152.0 | **57.1 % / 58.0 %**, mean len 2.33–2.74 |
+| Qwen3-4B q4 | baseline | 22.28 | 105.8 | – |
+| Qwen3-4B q4 | + Qwen3.5-0.8B q8 drafter | 22.19 | 158.4 | **speculation disabled** |
+
+Two findings, both useful:
+
+1. **Vocab mismatch is fatal, not slow.** `Qwen3.5-0.8B` cannot draft for `Qwen3-4B`; llama-server logs
+   `the target and draft vocabs are not compatible` and disables speculation at load time. The identical
+   tok/s in that row is therefore *not* evidence about speculation — it is evidence that the pair was
+   rejected. Anyone benchmarking must check the log line `speculative decoding enabled|disabled`.
+2. **On this RDNA2 iGPU, speculation loses even at 58 % acceptance.** The earlier estimate said
+   break-even needs >= 46 % acceptance; that model assumed the drafter is almost free. In reality the
+   0.5B draft and the 1.5B verify run on the same 12 CUs, so the extra forward passes cost more than the
+   saved verify work: -40 % decode, -50 % prefill.
+
+Decision: **speculation stays off** in `models.yaml` for this hardware. The measured escape hatch is
+small-model routing (Jev 1.5B at ~56 tok/s, 0.5B at ~64 tok/s), not drafting for a bigger model.
+Re-test only on a discrete GPU with spare compute, and re-check acceptance before believing a speedup.
