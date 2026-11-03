@@ -24,6 +24,7 @@ class ModelUnavailable(Exception):
 @dataclass(frozen=True)
 class Endpoint:
     base_url: str
+    api_key: str | None = None
 
 
 @dataclass
@@ -76,7 +77,7 @@ class Scheduler:
         if spec.runtime == "external":  # already running elsewhere (e.g. the Jev server): no spawn, no budget
             if not spec.endpoint:
                 raise ModelUnavailable(f"{model_id}: external model without endpoint")
-            return Endpoint(spec.endpoint.rstrip("/"))
+            return Endpoint(spec.endpoint.rstrip("/"), api_key=spec.api_key)
         if spec.runtime == "virtual":
             raise ModelUnavailable(f"{model_id} is a virtual model; it is orchestrated by the gateway, not loaded")
         if spec.est_mem_mb > self.settings.budget_mb:
@@ -175,3 +176,17 @@ class Scheduler:
             if entry is not None and entry.in_use > 0:
                 entry.in_use -= 1
             self._cond.notify_all()
+
+    async def shutdown(self) -> None:
+        """Stop every loaded backend. Without this, a killed gateway leaves llama-server
+        processes holding Vulkan device memory and the next start fails with an allocation error
+        (observed: 204 MB KV cache could not be allocated)."""
+        async with self._cond:
+            entries = list(self._loaded.items())
+            self._loaded.clear()
+            self._cond.notify_all()
+        for _, entry in entries:
+            try:
+                await self.supervisor.stop(entry.mp)
+            except Exception:  # shutdown must never raise
+                log.exception("failed to stop backend while shutting down")

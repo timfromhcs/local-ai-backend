@@ -10,9 +10,16 @@ class BackendError(Exception):
     """The backend answered with an error, or could not be reached."""
 
 
-async def forward_chat(base_url: str, body: dict, client: httpx.AsyncClient) -> dict:
+def auth_headers(api_key: str | None) -> dict[str, str]:
+    """External servers started with `--api-key` answer 401 without this header."""
+    return {"authorization": f"Bearer {api_key}"} if api_key else {}
+
+
+async def forward_chat(base_url: str, body: dict, client: httpx.AsyncClient,
+                       api_key: str | None = None) -> dict:
     try:
-        r = await client.post(f"{base_url.rstrip('/')}/v1/chat/completions", json=body)
+        r = await client.post(f"{base_url.rstrip('/')}/v1/chat/completions", json=body,
+                              headers=auth_headers(api_key))
     except httpx.HTTPError as exc:
         raise BackendError(f"backend unreachable: {exc!r}") from exc
     if r.status_code >= 400:
@@ -23,9 +30,11 @@ async def forward_chat(base_url: str, body: dict, client: httpx.AsyncClient) -> 
         raise BackendError("backend returned non-JSON") from exc
 
 
-async def open_stream(base_url: str, body: dict, client: httpx.AsyncClient) -> httpx.Response:
+async def open_stream(base_url: str, body: dict, client: httpx.AsyncClient,
+                      api_key: str | None = None) -> httpx.Response:
     """Send the request and return the streaming response ONLY if the backend accepted it (status < 400)."""
-    req = client.build_request("POST", f"{base_url.rstrip('/')}/v1/chat/completions", json=body)
+    req = client.build_request("POST", f"{base_url.rstrip('/')}/v1/chat/completions", json=body,
+                               headers=auth_headers(api_key))
     try:
         resp = await client.send(req, stream=True)
     except httpx.HTTPError as exc:

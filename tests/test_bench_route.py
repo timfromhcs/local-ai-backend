@@ -37,7 +37,7 @@ class _Scheduler:
         return []
 
     async def ensure_loaded(self, model_id):
-        return type("EP", (), {"base_url": "http://fake"})()
+        return type("EP", (), {"base_url": "http://fake", "api_key": None})()
 
     async def release(self, model_id):
         return None
@@ -104,6 +104,26 @@ def test_bench_can_opt_into_thinking(registry):
     body = _client(registry, spy).post("/v1/bench", json={"model": "good", "thinking": True}).json()
     assert seen["kwargs"] is None, "thinking=true must not force enable_thinking=false"
     assert body["score"] >= 0
+
+
+def test_bench_supports_virtual_models(registry):
+    """duo is orchestrated, not loaded - the bench must route through duo.chat."""
+    registry = dict(registry)
+    registry["duo"] = ModelSpec(id="duo", kind="llm", files=[], runtime="virtual", est_mem_mb=0)
+    body = _client(registry).post("/v1/bench", json={"model": "duo", "tasks": ["json"]}).json()
+    assert body["model"] == "duo"
+    assert len(body["rows"]) == 1 and body["rows"][0]["id"] == "json"
+
+
+def test_bench_task_filter_rejects_unknown_ids(registry):
+    r = _client(registry).post("/v1/bench", json={"model": "good", "tasks": ["nope"]})
+    assert r.status_code == 400
+    assert r.json()["error"]["code"] == "unknown_task"
+
+
+def test_bench_task_filter_runs_only_the_requested_tasks(registry):
+    body = _client(registry).post("/v1/bench", json={"model": "good", "tasks": ["json", "math"]}).json()
+    assert [row["id"] for row in body["rows"]] == ["json", "math"]
 
 
 def test_bench_partial_failure_still_scores(registry):

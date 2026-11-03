@@ -21,6 +21,7 @@ class ModelSpec(BaseModel):
     notes: str | None = None
     warm_prefix: bool = False  # precompute + restore the OpenCode prompt prefix at every server start
     endpoint: str | None = None  # runtime "external": an already running OpenAI-compatible server (never spawned)
+    api_key: str | None = None  # runtime "external": bearer token that server requires (e.g. llama-server --api-key)
 
 
 def load_registry(path: Path, model_dir: Path) -> dict[str, ModelSpec]:
