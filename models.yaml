@@ -22,8 +22,9 @@ models:
     kind: llm
     runtime: external
     endpoint: "http://127.0.0.1:8080"
+    api_key: local
     est_mem_mb: 0
-    notes: "Qwen2.5-Coder-1.5B Q4 on port 8080 (56 tok/s decode). Fast lane for trivial requests (titles, routing)."
+    notes: "Qwen2.5-Coder-1.5B Q4 on port 8080 (56 tok/s decode). Fast lane for trivial requests (titles, routing). Started with --api-key local, so the gateway must send the bearer header."
     files: []
   # --- virtual model: what OpenCode sees as ONE model ---
   - id: duo

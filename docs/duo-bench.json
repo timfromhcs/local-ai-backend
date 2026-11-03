@@ -1,0 +1,53 @@
+﻿{
+    "at":  "2026-11-03T17:41:49",
+    "tasks":  [
+                  "routing",
+                  "tool-call",
+                  "math",
+                  "json"
+              ],
+    "runs":  [
+                 {
+                     "model":  "qwen3-4b",
+                     "score":  0.25,
+                     "seconds":  21.7,
+                     "by_category":  {
+                                         "routing":  0.0,
+                                         "tools":  0.0,
+                                         "format":  1.0,
+                                         "reasoning":  0.0
+                                     },
+                     "rows":  [
+                                  {
+                                      "id":  "routing",
+                                      "score":  0.0,
+                                      "seconds":  11.75,
+                                      "answer":  "fast"
+                                  },
+                                  {
+                                      "id":  "tool-call",
+                                      "score":  0.0,
+                                      "seconds":  2.08,
+                                      "answer":  "```json\n{\n  \"tool_call\": \"list_files\",\n  \"arguments\": {\n    \"path\": \"C:\\\\work\"\n  }\n}\n```"
+                                  },
+                                  {
+                                      "id":  "json",
+                                      "score":  1.0,
+                                      "seconds":  1.55,
+                                      "answer":  "{\"model\":\"duo\",\"loaded\":true,\"ram_mb\":9000}"
+                                  },
+                                  {
+                                      "id":  "math",
+                                      "score":  0.0,
+                                      "seconds":  6.21,
+                                      "answer":  "To find how many tokens the model decodes in 10 minutes, we first convert 10 minutes to seconds:\n\n$$\n10 \\text{ minutes} = 10 \\times 60 = 600 \\text{ seconds}\n$$\n"
+                                  }
+                              ]
+                 },
+                 {
+                     "model":  "duo",
+                     "error":  "Der Remoteserver hat einen Fehler zurückgegeben: (502) Ungültiges Gateway.",
+                     "seconds":  0
+                 }
+             ]
+}

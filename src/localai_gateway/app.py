@@ -68,6 +68,12 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
         finally:
             if owned:
                 await holder["client"].aclose()
+            # stop backends on graceful shutdown; otherwise they keep the GPU memory and the
+            # next start dies with a Vulkan allocation error
+            try:
+                await scheduler.shutdown()
+            except Exception:  # pragma: no cover - shutdown must never mask the real error
+                pass
 
     app = FastAPI(title="localai-gateway", lifespan=lifespan)
     # The static demo (Vercel preview/production) and local dev servers call this gateway
@@ -112,7 +118,7 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
         if err is not None:
             raise BackendError(f"{model_id}: {err.body.decode()[:200]}")
         try:
-            return await forward_chat(ep.base_url, {**prepare(model_id, body), "stream": False}, holder["client"])
+            return await forward_chat(ep.base_url, {**prepare(model_id, body), "stream": False}, holder["client"], getattr(ep, "api_key", None))
         finally:
             await scheduler.release(model_id)
 
@@ -204,8 +210,14 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
 
         max_tokens = int(body.get("max_tokens", 400))
         thinking = bool(body.get("thinking", False))
+        wanted = body.get("tasks")
+        tasks = [t for t in BENCH_SUITES[suite] if not wanted or t.id in wanted]
+        if not tasks:
+            return error(400, "unknown_task", f"no task matched {wanted!r}",
+                         valid_ids=[t.id for t in BENCH_SUITES[suite]])
+        virtual = spec.runtime == "virtual"
         rows: list[dict] = []
-        for task in BENCH_SUITES[suite]:
+        for task in tasks:
             started = time.perf_counter()
             request = {
                 "model": model_id,
@@ -218,7 +230,8 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
                 # which scores 0 for every task. Scoring does not need a reasoning trace.
                 request["chat_template_kwargs"] = {"enable_thinking": False}
             try:
-                resp = await call_model(model_id, request)
+                # virtual models (duo) are orchestrated by the app, not loaded by the scheduler
+                resp = await (duo.chat(request) if virtual else call_model(model_id, request))
                 msg = resp["choices"][0]["message"]
                 content = msg.get("content") or ""
                 if isinstance(content, list):
@@ -329,13 +342,13 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
         body = prepare(mid, body)
         if not stream:
             try:
-                return JSONResponse(await forward_chat(ep.base_url, body, client))
+                return JSONResponse(await forward_chat(ep.base_url, body, client, getattr(ep, "api_key", None)))
             except BackendError as exc:
                 return error(503, "backend_error", str(exc))
             finally:
                 release_later(mid)
         try:
-            resp = await open_stream(ep.base_url, body, client)
+            resp = await open_stream(ep.base_url, body, client, getattr(ep, "api_key", None))
         except BackendError as exc:
             release_later(mid)
             return error(503, "backend_error", str(exc))
