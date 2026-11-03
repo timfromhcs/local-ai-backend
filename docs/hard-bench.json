@@ -1,0 +1,68 @@
+{
+  "at": "2026-11-03T18:36:59.107Z",
+  "suite": "hard",
+  "runs": [
+    {
+      "model": "qwen3-4b",
+      "mode": "auto",
+      "status": 200,
+      "score": 0.333,
+      "seconds": 55,
+      "rows": [
+        {
+          "id": "hard-routing",
+          "score": 0,
+          "seconds": 41.54,
+          "answer": "fast",
+          "error": null
+        },
+        {
+          "id": "hard-multi-step",
+          "score": 0,
+          "seconds": 11.69,
+          "answer": "To find how many tokens the model produces in exactly 10 minutes, we need to account for both the **startup time** and the **token decoding rate**.\n\n### Step 1: Convert 10 minutes to seconds\n$$\n10 \\te",
+          "error": null
+        },
+        {
+          "id": "hard-format",
+          "score": 1,
+          "seconds": 1.68,
+          "answer": "STATUS=OK;MODE=duo;TOKENS=3363",
+          "error": null
+        }
+      ],
+      "error": null
+    },
+    {
+      "model": "duo",
+      "mode": "duo",
+      "status": 200,
+      "score": 0.333,
+      "seconds": 5.5,
+      "rows": [
+        {
+          "id": "hard-routing",
+          "score": 0,
+          "seconds": 0.35,
+          "answer": "fast",
+          "error": null
+        },
+        {
+          "id": "hard-multi-step",
+          "score": 0,
+          "seconds": 4.73,
+          "answer": "To determine how many tokens the model produces in exactly 10 minutes, we need to follow these steps:\n\n1. Calculate the total time available for decoding tokens.\n2. Determine the number of tokens prod",
+          "error": null
+        },
+        {
+          "id": "hard-format",
+          "score": 1,
+          "seconds": 0.47,
+          "answer": "STATUS=OK;MODE=duo;TOKENS=3363",
+          "error": null
+        }
+      ],
+      "error": null
+    }
+  ]
+}
