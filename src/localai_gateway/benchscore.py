@@ -9,7 +9,9 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from typing import Callable
+from typing import Any, Callable
+
+from .bench_exec import EXEC_TOOLS
 
 
 def score_route(answer: str, want: str) -> float:
@@ -68,6 +70,8 @@ class BenchTask:
     category: str = "core"
     tools: tuple[dict, ...] = ()          # tool schemas the client offers; enables the duo loop
     score_message: Callable[[dict], float] | None = None  # when the answer is a tool call, not text
+    files: dict[str, str] | None = None   # a workdir the client creates; the model may edit it
+    verify: Callable[[Any], tuple[bool, str]] | None = None  # mechanical check (run the tests), not an LLM
 
 
 # Two small tools so a task can require an actual call instead of prose about one.
@@ -194,4 +198,60 @@ class BenchResult:
             "rows": self.rows,
         }
 
-SUITES: dict[str, tuple[BenchTask, ...]] = {"fast": FAST, "tools": TOOL_TASKS, "hard": HARD_TASKS}
+FIX_BUG_FILES: dict[str, str] = {
+    "solution.py": "def add(a, b):\n    return a - b\n",
+    "test_solution.py": (
+        "from solution import add\n\n\n"
+        "def test_add():\n    assert add(2, 3) == 5\n\n\n"
+        "def test_negative():\n    assert add(-1, 1) == 0\n"
+    ),
+}
+
+ADD_FEATURE_FILES: dict[str, str] = {
+    "stats.py": "def mean(values):\n    raise NotImplementedError\n",
+    "test_stats.py": (
+        "from stats import mean\n\n\n"
+        "def test_mean():\n    assert mean([1, 2, 3]) == 2\n\n\n"
+        "def test_empty():\n    assert mean([]) is None\n"
+    ),
+}
+
+
+def tests_pass(workdir: Any) -> tuple[bool, str]:
+    """The honest scorer: run the suite the model was asked to fix."""
+    return workdir.tests_pass()
+
+
+# Tasks with a mechanical check. The model gets a real workdir and four tools; the score is the
+# test run afterwards, so "the loop earns its cost where correctness is checkable" is measurable.
+CODE_TASKS: tuple[BenchTask, ...] = (
+    BenchTask(
+        "code-fix-bug",
+        "solution.py contains a bug, so run_tests fails. Fix solution.py (never the test file) until "
+        "run_tests is green, then reply DONE. Only write_file changes the directory - code pasted "
+        "into your reply is discarded.",
+        1.0,
+        lambda a: 0.0,  # text never scores; only a green suite does
+        "code",
+        EXEC_TOOLS,
+        None,
+        FIX_BUG_FILES,
+        tests_pass,
+    ),
+    BenchTask(
+        "code-add-feature",
+        "stats.py has an unimplemented function and test_stats.py defines what it must do. Implement it "
+        "without touching the test file, run the tests until they pass, then reply DONE. Only "
+        "write_file changes the directory - code pasted into your reply is discarded.",
+        1.0,
+        lambda a: 0.0,
+        "code",
+        EXEC_TOOLS,
+        None,
+        ADD_FEATURE_FILES,
+        tests_pass,
+    ),
+)
+
+SUITES: dict[str, tuple[BenchTask, ...]] = {"fast": FAST, "tools": TOOL_TASKS, "hard": HARD_TASKS,
+                                            "code": CODE_TASKS}

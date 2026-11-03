@@ -159,3 +159,38 @@ score was produced: force-killing the gateway leaves `llama-server` children hol
 and the next load dies with `ErrorOutOfDeviceMemory`. The gateway now keeps a small ledger of the
 backends it spawned (`cache/backends.json`) and reaps exactly those whose owning process is gone at
 the next start — it never touches processes it did not start.
+
+## 2026-11-03 — code suite: the client, not the loop, is what verifies
+
+The hard suite proved the point negatively (a verifier with no ground truth approves a wrong answer).
+So this suite makes correctness mechanical: the client creates a temp workdir with a failing pytest
+file, executes the model's `list_files` / `read_file` / `write_file` / `run_tests` calls, then runs
+the tests itself. Green means green; no LLM judge anywhere. `POST /v1/bench` refuses the suite unless
+`LOCALAI_BENCH_EXEC=1` is set, because it executes generated code in a temp directory.
+
+| Run | qwen3-4b alone | duo forced (`mode: "duo"`) |
+|---|---|---|
+| before repair + protocol (2 runs) | 0.5 / 0.5 | 0.5 / 0.5 |
+| after repair + protocol | **1.0** in 51.8 s | **1.0** in 66.4 s |
+| repeat | **1.0** in 50.3 s | **1.0** in 65.2 s |
+
+Two changes were made between those rows, and both live in the *client*:
+
+1. **A bounded repair loop.** When the model declares itself done, the harness runs the tests; if
+   they still fail it feeds the failure back ("your answer is not accepted") for up to two rounds.
+   A model that says "DONE" over a red suite would otherwise be scored as finished.
+2. **A protocol sentence in the task.** "Only `write_file` changes the directory — code pasted into
+   your reply is discarded." Without it the 4B answered with prose and never touched a file; that is
+   a behavioral failure, not a knowledge gap.
+
+### Reading this honestly
+
+The score moved from 0.5 to 1.0 because the *harness* got better at refusing unpaid claims — not
+because either model learned something. On this suite `duo` scores the same as the 4B alone and
+costs ~15 s more (planner + verifier on a 27B), exactly like the hard suite. The loop's value is
+still unproven here; the demonstrated value is the mechanical check plus the repair round.
+
+One caveat recorded on purpose: a single run is not evidence. A third 4B run in between scored 0.5
+because the model chattered ("I will fix the add function…") and never called `write_file`; the two
+repeat runs above scored 1.0. Variance is real and is reported, not averaged away.
+

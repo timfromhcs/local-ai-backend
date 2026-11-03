@@ -1,0 +1,66 @@
+{
+  "at": "2026-11-03T19:54:26.251Z",
+  "suite": "code",
+  "runs": [
+    {
+      "model": "qwen3-4b",
+      "lane": "model",
+      "status": 200,
+      "score": 1,
+      "seconds": 51.8,
+      "rows": [
+        {
+          "id": "code-fix-bug",
+          "score": 1,
+          "seconds": 18.48
+        },
+        {
+          "id": "code-add-feature",
+          "score": 1,
+          "seconds": 33.23
+        }
+      ],
+      "error": null
+    },
+    {
+      "model": "qwen3-4b",
+      "lane": "model",
+      "status": 200,
+      "score": 1,
+      "seconds": 50.3,
+      "rows": [
+        {
+          "id": "code-fix-bug",
+          "score": 1,
+          "seconds": 17.33
+        },
+        {
+          "id": "code-add-feature",
+          "score": 1,
+          "seconds": 32.96
+        }
+      ],
+      "error": null
+    },
+    {
+      "model": "duo",
+      "lane": "duo",
+      "status": 200,
+      "score": 1,
+      "seconds": 65.2,
+      "rows": [
+        {
+          "id": "code-fix-bug",
+          "score": 1,
+          "seconds": 21.72
+        },
+        {
+          "id": "code-add-feature",
+          "score": 1,
+          "seconds": 43.45
+        }
+      ],
+      "error": null
+    }
+  ]
+}

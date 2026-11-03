@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from . import __version__
 
 from .adapters.llm import BackendError, forward_chat, iter_stream, open_stream
+from .bench_exec import Workdir, check_with_tests, run_with_tools, summarize_transcript
 from .benchscore import SUITES as BENCH_SUITES, BenchResult
 from .config import Settings, config_file
 from .doctor import report
@@ -217,6 +218,26 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
             return error(400, "unknown_task", f"no task matched {wanted!r}",
                          valid_ids=[t.id for t in BENCH_SUITES[suite]])
         virtual = spec.runtime == "virtual"
+        if any(t.verify is not None for t in tasks) and os.environ.get("LOCALAI_BENCH_EXEC") != "1":
+            return error(400, "bench_exec_disabled",
+                         "this suite runs generated code; set LOCALAI_BENCH_EXEC=1 to allow it")
+
+        async def run_code_task(task: Any, request: dict, virt: bool) -> tuple[str, float, str | None]:
+            """Drive the model against a real workdir; the tests decide the score, not the text."""
+            workdir = Workdir(task.files or {})
+            try:
+                async def call(b: dict) -> dict:
+                    return await (duo.chat(b) if virt else call_model(model_id, b))  # noqa: B023 - loop-local
+
+                _, messages = await run_with_tools(call, request, workdir,
+                                                   check=check_with_tests(workdir), repairs=2)
+                passed, output = task.verify(workdir) if task.verify is not None else (False, "no check")
+                trace = summarize_transcript(messages)
+                content = f"{trace}\n\n[{'green' if passed else 'red'}]\n{output}"
+                return content[:600], 1.0 if passed else 0.0, None
+            finally:
+                workdir.cleanup()
+
         rows: list[dict] = []
         for task in tasks:
             started = time.perf_counter()
@@ -241,16 +262,19 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
                     request["localai_mode"] = str(mode).lower()
             try:
                 # virtual models (duo) are orchestrated by the app, not loaded by the scheduler
-                resp = await (duo.chat(request) if virtual else call_model(model_id, request))
-                msg = resp["choices"][0]["message"]
-                content = msg.get("content") or ""
-                if isinstance(content, list):
-                    content = " ".join(b.get("text", "") for b in content if isinstance(b, dict))
-                if task.score_message is not None:
-                    score = float(task.score_message(msg))
+                if task.verify is not None:
+                    content, score, err = await run_code_task(task, request, virtual)
                 else:
-                    score = float(task.score(content))
-                err = None
+                    resp = await (duo.chat(request) if virtual else call_model(model_id, request))
+                    msg = resp["choices"][0]["message"]
+                    content = msg.get("content") or ""
+                    if isinstance(content, list):
+                        content = " ".join(b.get("text", "") for b in content if isinstance(b, dict))
+                    if task.score_message is not None:
+                        score = float(task.score_message(msg))
+                    else:
+                        score = float(task.score(content))
+                    err = None
             except Exception as exc:  # one broken task must not kill the run
                 content, score, err = "", 0.0, f"{type(exc).__name__}: {exc}"[:300]
             rows.append({

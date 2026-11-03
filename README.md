@@ -186,11 +186,17 @@ python -m bench.run --gateway http://127.0.0.1:8090 --model qwen3-4b --suite fas
 python -m bench.run --gateway http://127.0.0.1:8090 --model qwen3-4b --suite long
 python -m bench.run --gateway http://127.0.0.1:8090 --model qwen3-4b --suite tools
 python -m bench.run --gateway http://127.0.0.1:8090 --model qwen3-4b --suite hard
+python -m bench.run --gateway http://127.0.0.1:8090 --model qwen3-4b --suite code
 ```
 
 Scoring is deterministic Python (routing words, tool-call shape, strict JSON, arithmetic,
 honesty, concision, patch shape). No LLM judge, so results are cheap and repeatable. The `tools`
 suite scores the message's `tool_calls` - prose that merely describes a call scores 0.
+
+The `code` suite is the only one where the score cannot be talked into existence: the client creates
+a temp workdir with a failing pytest suite, executes the model's `list_files` / `read_file` /
+`write_file` / `run_tests` calls, and then runs the tests itself. Green means green. Because that
+executes generated code, `POST /v1/bench` refuses the suite unless `LOCALAI_BENCH_EXEC=1` is set.
 
 A lane can be demanded instead of hoped for: send `localai_mode: "fast" | "duo" | "bigout"` with a
 chat request, or `mode` with a bench run. Anything else is a structured `400 bad_mode`, and the
@@ -202,11 +208,14 @@ What the numbers actually say (`docs/bench-log.md`, measured on this laptop):
 |---|---|---|---|
 | `tools` (2 tasks) | 1.0 (178 s cold) | 1.0 in 3.7 s | 1.0 in 30.1 s |
 | `hard` (3 tasks) | 0.333 | 0.333 in 5.3 s | **0.333** in 18.5 s |
+| `code` (2 tasks, tests must pass) | 1.0 in ~51 s | - | **1.0** in ~66 s |
 
 The second row is the honest one: the plan/execute/verify loop runs and costs time, but it does
 **not** repair a capability gap. A plan cannot add knowledge the executor lacks, and a verifier
 without ground truth replies `VERIFIED` to a wrong answer. The loop can only earn its cost where
-correctness is checkable (run the tests, call the tool).
+correctness is checkable (run the tests, call the tool) - which is what the `code` suite does, and
+there it scores the same as the 4B alone while costing ~15 s more. What *did* move the score from
+0.5 to 1.0 was the client: a bounded repair round that feeds a red test run back to the model.
 
 ## MCP stack
 
@@ -222,14 +231,14 @@ localai-gateway (7), blender, memory, ast-grep, context7, fetch.
 src/localai_gateway/   gateway, scheduler, supervisor, duo, modes, warmup,
                        placement (SAT), hardware (autotune), config
 src/rsi_lab/           trajectory scrub/harvest/clean/split + promotion gate
-bench/                 deterministic benchmark suite (fast, long, tools, hard)
+bench/                 deterministic benchmark suite (fast, long, tools, hard, code)
 web/                   static ONNX/GGUF/WASM demo, EN/DE/FR, lab, IndexedDB, SEO files
 api/                   Dockerfile + compose (API shell, no weights)
 packages/npm/          launcher that downloads and verifies the release binary
 servers/               localai-gateway-mcp
 packaging/             PyInstaller spec + entry point
 scripts/               build-exe, check-web, probes, bonsai-server
-tests/                 315 hermetic tests (gateway, scheduler, duo, modes, RSI, CORS,
+tests/                 333 hermetic tests (gateway, scheduler, duo, modes, RSI, CORS,
                        bench, placement, autotune, surfaces, release hygiene)
 docs/                  perf log, plans, design specs, inventory
 models.yaml            model registry (files, memory estimates, measured flags)
