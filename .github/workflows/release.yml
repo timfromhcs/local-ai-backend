@@ -70,10 +70,37 @@ jobs:
             dist/localai-gateway.exe
             dist/SHA256SUMS.txt
 
+  sbom:
+    name: sbom (cyclonedx)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+      - name: Generate SBOM
+        run: python scripts/sbom.py --out dist/sbom.cdx.json
+      - name: Sanity check the SBOM
+        run: |
+          python - <<'PY'
+          import json
+          sbom = json.load(open("dist/sbom.cdx.json"))
+          assert sbom["bomFormat"] == "CycloneDX" and sbom["specVersion"] == "1.5"
+          assert len(sbom["components"]) > 10, "SBOM too small to be useful"
+          print("components:", len(sbom["components"]))
+          PY
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: dist/sbom.cdx.json
+
   publish:
     name: github release
     runs-on: ubuntu-latest
-    needs: [wheel, exe]
+    needs: [wheel, exe, sbom]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/download-artifact@v6
@@ -87,6 +114,7 @@ jobs:
           cp artifacts/*.whl release/ || true
           cp artifacts/*.tar.gz release/ || true
           cp artifacts/SHA256SUMS.txt release/ || true
+          cp artifacts/sbom.cdx.json release/ || true
           ls -la release
       - name: Verify checksum
         run: |
@@ -115,3 +143,4 @@ jobs:
             release/*.whl
             release/*.tar.gz
             release/SHA256SUMS.txt
+            release/sbom.cdx.json

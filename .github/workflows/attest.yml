@@ -1,0 +1,51 @@
+name: attest
+
+# Separate from release.yml on purpose: if an attestation action version breaks, releases still
+# ship. Runs after a release is published and attests the binaries that are already attached.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to attest, e.g. v0.4.0"
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  attest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Resolve tag
+        id: tag
+        run: echo "value=${{ github.event.inputs.tag || github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p artifacts
+          gh release download "${{ steps.tag.outputs.value }}" --dir artifacts --pattern '*.exe' --pattern '*.whl' --pattern '*.tar.gz' --pattern 'sbom.cdx.json'
+          ls -la artifacts
+      - name: Generate SBOM if the release has none
+        run: |
+          if [ ! -f artifacts/sbom.cdx.json ]; then
+            python3 -m pip install --quiet --upgrade pip build
+            python3 -m pip install --quiet -e .
+            python3 scripts/sbom.py --out artifacts/sbom.cdx.json
+          fi
+      - name: Attest build provenance (binaries)
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            artifacts/*.exe
+            artifacts/*.whl
+      - name: Attest the SBOM
+        uses: actions/attest@v4
+        with:
+          subject-path: artifacts/*.exe
+          sbom-path: artifacts/sbom.cdx.json
