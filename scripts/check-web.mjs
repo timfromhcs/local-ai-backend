@@ -117,5 +117,24 @@ if (sitemap && !sitemap.includes("https://local-ai-backend-blue.vercel.app/")) f
 if (sitemap && !/hreflang="(en|de|fr)"/.test(sitemap)) fail("sitemap lacks hreflang alternates");
 if (problems.length === 0) ok("SEO: canonical, hreflang, JSON-LD, robots, sitemap");
 
+// 6. security headers: a policy that cannot silently rot
+const securityHeaders = (cfg.headers ?? [])
+  .flatMap((rule) => rule.headers ?? [])
+  .reduce((acc, h) => ({ ...acc, [h.key.toLowerCase()]: h.value }), {});
+for (const required of ["content-security-policy", "x-content-type-options", "referrer-policy", "permissions-policy", "strict-transport-security"]) {
+  if (!securityHeaders[required]) fail(`vercel.json missing header: ${required}`);
+}
+const csp = securityHeaders["content-security-policy"] ?? "";
+if (csp) {
+  if (/\bunsafe-eval\b/.test(csp)) fail("CSP allows unsafe-eval");
+  if (/script-src[^;]*'unsafe-inline'/.test(csp)) fail("CSP allows inline scripts");
+  if (!/script-src[^;]*['"]?self/.test(csp)) fail("CSP script-src must allow same-origin scripts");
+  if (!/default-src 'self'/.test(csp)) fail("CSP default-src should be 'self'");
+  if (!/object-src 'none'/.test(csp)) fail("CSP should disable object-src");
+  if (!/frame-ancestors 'none'/.test(csp)) fail("CSP should set frame-ancestors 'none'");
+  ok(`CSP present (${csp.length} chars), no unsafe-eval, no inline scripts`);
+}
+if (!securityHeaders["x-frame-options"]) fail("missing X-Frame-Options");
+
 console.log(problems.length ? `\n${problems.length} problem(s)` : "\nweb check: PASS");
 process.exit(problems.length ? 1 : 0);

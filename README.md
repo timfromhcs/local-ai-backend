@@ -214,8 +214,25 @@ models.yaml            model registry (files, memory estimates, measured flags)
 Model files (`*.gguf`, `*.onnx`, `*.safetensors`), runtimes (`bin/`), the venv and caches are
 git-ignored and never committed.
 
-## Honest limits
+## Troubleshooting
 
+| Symptom | Cause | Fix |
+|---|---|---|
+| `model_unavailable: missing file(s)` | the GGUF is not next to the binary | put it there and keep the name in `models.yaml` |
+| `does_not_fit` (503) | the model needs more than the RAM budget | lower `est_mem_mb`-heavy models, or run with fewer models resident (`GET /v1/placement` tells you what fits) |
+| `backend_error: exited with code 1 before becoming healthy` | llama-server rejected the flags or the file | run `localai-gateway --doctor`, then start llama-server manually with the same args to see its stderr |
+| gateway answers `/healthz` but the demo says offline | CORS or the wrong port | the demo calls `http://127.0.0.1:8090`; add your origin to `LOCALAI_CORS_ORIGINS` |
+| the EXE warns on first start | unsigned binary | "More info -> Run anyway"; verify the checksum and attestation first |
+| `npm ci` on Vercel | project preset was changed to a framework | keep the Vercel project on **Other** (`framework: null`); the static site has no build step |
+| browser refuses a model download | CSP or memory | the page allows `huggingface.co` explicitly; a 1.5B q4 needs roughly 2 GB free |
+
+## Security and contributing
+
+- Report vulnerabilities privately: [SECURITY.md](SECURITY.md) (scope included).
+- Contribution rules and the exact gate commands: [CONTRIBUTING.md](CONTRIBUTING.md).
+- Release verification: checksum, SBOM and `gh attestation verify` are documented above.
+
+## Honest limits
 - A 4B model does not reason like a frontier model. `duo` improves tool-call reliability, not
   intelligence.
 - Vercel containers have no GPU: they serve the API/MCP shell, not the 27B model.
