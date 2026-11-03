@@ -72,3 +72,26 @@ Three bugs were found by attempting this measurement, all fixed in PR #52:
    died with `failed to allocate buffer for kv cache`. Added `Scheduler.shutdown()`.
 3. `duo` answered 401 because the external Jev server is started with `--api-key local` and the
    gateway never sent the bearer header. External models now carry `api_key` in `models.yaml`.
+
+## 2026-11-03 — tool-call suite: both models score 1.0
+
+A `tools` suite was added precisely because the tasks above never engage duo's planning loop (no
+tool schemas → fast lane). Two tasks now offer `list_files`/`read_file` and are scored on the
+message's `tool_calls`, not on text; prose that merely describes a call scores 0.
+
+| Model | Score | Wall time | Note |
+|---|---|---|---|
+| qwen3-4b | **1.0** (2/2) | 178.2 s | 176 s of that is the cold start, then 1.9 s |
+| duo | **1.0** (2/2) | **3.7 s** | again the fast lane (Jev chose `fast`), not plan/execute/verify |
+
+### What this run taught us
+
+- The 4B model *can* emit correct tool calls when the client sends schemas; the earlier tool-call
+  failure was a text-format task, not a capability gap.
+- `duo` stays fast because its mode controller prefers the fast lane when the task is small. To
+  measure the plan/execute/verify path a caller must be able to **force** the mode; that is the
+  next open item, not something to claim from this number.
+- While measuring, three further gateway bugs were fixed (PR #54): `ask_jev` sent no API key (401
+  every check-up), the supervisor died on a lost Windows process handle and marked a healthy model
+  as failed, and `bin/llama/llama-server.exe` vanished from this machine — the runtime path is now
+  overridable via `LOCALAI_LLAMA_SERVER`, and `doctor` reports the effective path.
