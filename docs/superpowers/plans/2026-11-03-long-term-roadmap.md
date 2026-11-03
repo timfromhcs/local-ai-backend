@@ -70,10 +70,11 @@ limit and the error envelope.
 - Gate: a promotion decision with numbers, or an explicit "candidate lost, champion kept".
 
 **Progress:** the capture loop is wired into the hourly wake prompt, so every cycle records
-itself. Two verified pairs exist (392 + 124 tokens) from real work: the supply-chain cycle and
-the placement-route verification. The dataset builder now deduplicates re-exported pairs so one
-episode cannot be trained twice. 18 more verified sessions are needed before a 1.5B run is worth
-the CPU hours; until then `--plan` is the honest output.
+itself. Seven verified pairs exist (real work: supply-chain, placement, RSI, a11y, PWA, speculative
+decoding, exposure guard). The dataset builder deduplicates re-exported pairs so one episode cannot
+be trained twice, and `rsi_lab/cycle.py` now runs the whole pass — plan, optional train, bench,
+promotion gate, `rsi/state.json` — while refusing to train below 20 verified pairs and stating the
+shortfall. 13 more sessions are needed before a 1.5B run is worth the CPU hours.
 
 ### Phase C — distribution and clients (needs credentials)
 - Publish the wheel (PyPI Trusted Publishing) and the npm launcher; both workflows exist and
