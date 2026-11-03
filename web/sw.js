@@ -1,10 +1,21 @@
 /* LocalAI Gateway service worker.
    Precache the shell so the page opens offline; models are NOT cached here (they are large and
    the browser handles those caches). Bump SW_VERSION to invalidate. */
-const SW_VERSION = "v1";
+const SW_VERSION = "v2";
+
+// A cached redirect may not be returned for a navigation (Vercel's cleanUrls turns
+// /index.html into a 308). Re-wrap the body in a plain Response so the browser accepts it.
+async function shellResponse() {
+  const cached = (await caches.match("/")) || (await caches.match("/index.html"));
+  if (!cached) return Response.error();
+  return new Response(cached.body, {
+    status: 200,
+    statusText: "OK",
+    headers: cached.headers,
+  });
+}
 const SHELL = [
   "/",
-  "/index.html",
   "/styles.css",
   "/i18n.js",
   "/app.js",
@@ -48,10 +59,10 @@ self.addEventListener("fetch", (event) => {
       fetch(request)
         .then((response) => {
           const copy = response.clone();
-          caches.open(SW_VERSION).then((cache) => cache.put("/index.html", copy)).catch(() => {});
+          caches.open(SW_VERSION).then((cache) => cache.put("/", copy)).catch(() => {});
           return response;
         })
-        .catch(() => caches.match("/index.html").then((hit) => hit || caches.match("/"))),
+        .catch(() => shellResponse()),
     );
     return;
   }
