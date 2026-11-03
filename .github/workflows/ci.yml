@@ -22,7 +22,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -43,7 +43,7 @@ jobs:
     name: web static gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
@@ -54,7 +54,7 @@ jobs:
     name: secret scan + dependency audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -73,7 +73,7 @@ jobs:
     name: accessibility audit (chromium)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
@@ -90,7 +90,7 @@ jobs:
     runs-on: windows-latest
     needs: [test]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -133,7 +133,7 @@ jobs:
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Skip without token
         if: env.VERCEL_TOKEN == ''
         run: echo "VERCEL_TOKEN is not set - skipping. Add it in Settings > Secrets to enable deploys."
