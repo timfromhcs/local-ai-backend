@@ -1,0 +1,9 @@
+{
+  "name": "localai-webtest",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Playwright used by scripts/audit-web.mjs (accessibility gate). Not shipped.",
+  "devDependencies": {
+    "playwright": "1.65.0-alpha-2026-10-30"
+  }
+}

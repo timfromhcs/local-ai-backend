@@ -6,7 +6,7 @@
   --panel-2: #1a2230;
   --line: #26303f;
   --text: #e8edf5;
-  --muted: #9aa8bd;
+  --muted: #a3b1c6;
   --accent: #6366f1;
   --accent-2: #4338ca;
   --amber: #fbbf24;
@@ -39,7 +39,7 @@ h3 { font-size: 1.1rem; font-weight: 700; }
 p { margin: 0 0 1rem; }
 .wrap { width: min(var(--max), 100% - 2.5rem); margin-inline: auto; }
 .sr, .skip:not(:focus) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.skip { background: var(--accent); color: #fff; padding: .6rem 1rem; border-radius: 8px; position: fixed; top: .5rem; left: .5rem; z-index: 99; }
+.skip { background: var(--accent-2); color: #fff; padding: .6rem 1rem; border-radius: 8px; position: fixed; top: .5rem; left: .5rem; z-index: 99; }
 :focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 6px; }
 
 /* header */
@@ -61,8 +61,9 @@ p { margin: 0 0 1rem; }
 .lang button {
   border: 0; background: transparent; color: var(--muted); font: inherit; font-size: .78rem;
   padding: .25rem .55rem; border-radius: 999px; cursor: pointer;
+  min-width: 44px; min-height: 44px;
 }
-.lang button.on { background: var(--accent); color: #fff; }
+.lang button.on { background: var(--accent-2); color: #fff; }
 
 /* hero */
 .hero { padding: clamp(2.4rem, 6vw, 4.5rem) 0 clamp(2rem, 4vw, 3rem); }
@@ -96,6 +97,7 @@ p { margin: 0 0 1rem; }
 .tabs button {
   border: 1px solid var(--line); background: transparent; color: var(--muted);
   padding: .5rem .9rem; border-radius: 999px; font: inherit; font-size: .9rem; cursor: pointer;
+  min-height: 44px;
 }
 .tabs button[aria-selected="true"] { background: var(--panel); color: var(--text); border-color: #3a4661; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem; }
@@ -104,6 +106,7 @@ p { margin: 0 0 1rem; }
 select, input, textarea {
   background: var(--bg); color: var(--text); border: 1px solid var(--line);
   border-radius: 9px; padding: .55rem .7rem; font: inherit; font-size: .92rem; width: 100%;
+  min-height: 44px;
 }
 select, input { max-width: 420px; }
 textarea { resize: vertical; min-height: 3.2rem; font-family: var(--font); }

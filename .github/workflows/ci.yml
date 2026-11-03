@@ -50,6 +50,22 @@ jobs:
       - name: Validate web/ (vercel.json, JS syntax, i18n coverage, assets)
         run: node scripts/check-web.mjs
 
+  a11y:
+    name: accessibility audit (chromium)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Install Playwright
+        working-directory: packages/webtest
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Audit web/ (overflow, tap targets, contrast, focus, motion)
+        run: node scripts/audit-web.mjs
+
   exe:
     name: one-file exe (windows)
     runs-on: windows-latest
