@@ -59,6 +59,18 @@ curl http://127.0.0.1:8090/v1/chat/completions ^
   -d "{\"model\":\"duo\",\"messages\":[{\"role\":\"user\",\"content\":\"hello\"}]}"
 ```
 
+Or download the built binary from
+[Releases](https://github.com/timfromhcs/local-ai-backend/releases/latest) and verify it:
+
+```powershell
+gh release download v0.2.0 -p localai-gateway.exe -p SHA256SUMS.txt
+Get-FileHash .\localai-gateway.exe -Algorithm SHA256   # compare with SHA256SUMS.txt
+.\localai-gateway.exe --version                        # 0.2.0
+```
+
+The EXE is unsigned, so Windows SmartScreen warns on first run ("More info → Run anyway").
+That is stated here instead of hidden; a code-signing certificate is not configured yet.
+
 Python source instead of the exe:
 
 ```powershell
