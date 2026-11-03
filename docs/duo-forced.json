@@ -1,0 +1,25 @@
+{
+  "at": "2026-11-03T18:19:14.420Z",
+  "model": "duo",
+  "forced_mode": "duo",
+  "status": 200,
+  "score": 1,
+  "seconds": 30.1,
+  "rows": [
+    {
+      "id": "tool-list-read",
+      "score": 1,
+      "seconds": 21.77,
+      "answer": "",
+      "error": null
+    },
+    {
+      "id": "tool-single",
+      "score": 1,
+      "seconds": 8.27,
+      "answer": "",
+      "error": null
+    }
+  ],
+  "error": null
+}
