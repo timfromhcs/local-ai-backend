@@ -233,6 +233,12 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
             if task.tools:
                 request["tools"] = list(task.tools)
                 request["tool_choice"] = "auto"
+            if virtual:
+                mode = body.get("mode")
+                if mode:
+                    if str(mode).lower() not in ("fast", "duo", "bigout"):
+                        return error(400, "bad_mode", "mode must be fast, duo or bigout", got=str(mode)[:20])
+                    request["localai_mode"] = str(mode).lower()
             try:
                 # virtual models (duo) are orchestrated by the app, not loaded by the scheduler
                 resp = await (duo.chat(request) if virtual else call_model(model_id, request))
@@ -335,8 +341,14 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
         stream = bool(body.get("stream"))
 
         if spec.runtime == "virtual":
+            forced = body.get("localai_mode")
+            if forced is not None and str(forced).lower() not in ("fast", "duo", "bigout"):
+                return error(400, "bad_mode", "localai_mode must be fast, duo or bigout",
+                             got=str(forced)[:20])
             try:
                 result = await duo.chat(body)
+            except ValueError as exc:
+                return error(400, "bad_mode", str(exc))
             except (BackendError, KeyError, IndexError) as exc:
                 return error(503, "backend_error", str(exc))
             if stream:

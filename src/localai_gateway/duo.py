@@ -73,12 +73,18 @@ class Duo:
     # ---- public -------------------------------------------------------------------------------
     async def chat(self, body: dict) -> dict:
         msgs, tools = body["messages"], body.get("tools")
+        forced = str(body.get("localai_mode") or "").lower() or None
+        if forced is not None and forced not in ("fast", "duo", "bigout"):
+            raise ValueError(f"localai_mode must be fast, duo or bigout (got {forced!r})")
         if not tools:
             chars = sum(len(_text(m)) for m in msgs)
             model = self.cfg.fast if chars < self.cfg.fast_max_chars else self.cfg.executor
             return self._label(await self.call(model, self._upstream(body, model)))
         key = self._key(msgs, tools)
-        mode = await self.modes.decide(key, body) if self.modes is not None else Mode.DUO
+        if forced is not None:
+            mode = Mode(forced)
+        else:
+            mode = await self.modes.decide(key, body) if self.modes is not None else Mode.DUO
         if mode == Mode.FAST:
             return await self._fast(body)
         st = self._get(key)
@@ -228,6 +234,7 @@ class Duo:
 
     def _upstream(self, body: dict, model: str, system_extra: str = "") -> dict:
         b = copy.deepcopy(body)
+        b.pop("localai_mode", None)  # LocalAI extension: never forwarded to a backend
         b.update(model=model, stream=False)
         b.pop("stream_options", None)
         for m in b["messages"]:
