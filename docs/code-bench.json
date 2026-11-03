@@ -1,0 +1,54 @@
+{
+  "at": "2026-11-03T19:50:16.815Z",
+  "suite": "code",
+  "runs": [
+    {
+      "model": "qwen3-4b",
+      "lane": "model",
+      "status": 200,
+      "score": 0.5,
+      "seconds": 46.5,
+      "rows": [
+        {
+          "id": "code-fix-bug",
+          "score": 0,
+          "seconds": 12.28,
+          "answer": "say: I will run the tests to check the output and identify the issue. Let me run the tests.\nsay: The tests are failing because the `add` function in `solution.py` is not working correctly. I will fix the `add` functio\nsay: I need to fix the `add` function in `solution.py` so that it returns the correct results for both positive and negative \n\n[red]\nFF                                               ",
+          "error": null
+        },
+        {
+          "id": "code-add-feature",
+          "score": 1,
+          "seconds": 34.18,
+          "answer": "-> write_file({\"path\": \"stats.py\", \"content\": \"def some_function():\\n    pass\\n\\ndef another_f)\n   written stats.py (63 chars)\n-> run_tests({})\n   exit=2 =================================== ERRORS ==================================== _______________________ ERROR col\n-> write_file({\"path\": \"stats.py\", \"content\": \"def mean(numbers):\\n    return sum(numbers) / l)\n   written stats.py (122 chars)\n-> r",
+          "error": null
+        }
+      ],
+      "error": null
+    },
+    {
+      "model": "duo",
+      "lane": "duo",
+      "status": 200,
+      "score": 1,
+      "seconds": 66.4,
+      "rows": [
+        {
+          "id": "code-fix-bug",
+          "score": 1,
+          "seconds": 23.06,
+          "answer": "-> run_tests({})\n   exit=1 FF [100%] ================================== FAILURES =================================== _______________________\n-> write_file({\"path\": \"solution.py\", \"content\": \"def add(a, b):\\n    return a + b\\n\\ndef subt)\n   written solution.py (69 chars)\n-> run_tests({})\n   exit=0 .. [100%] 2 passed in 0.01s C:\\LocalAIBACKEND\\.venv\\Lib\\site-packages\\pytest_asyncio\\plugin.py:300: Py",
+          "error": null
+        },
+        {
+          "id": "code-add-feature",
+          "score": 1,
+          "seconds": 43.28,
+          "answer": "-> write_file({\"path\": \"stats.py\", \"content\": \"def some_function():\\n    pass\\n\\ndef another_f)\n   written stats.py (63 chars)\n-> run_tests({})\n   exit=2 =================================== ERRORS ==================================== _______________________ ERROR col\n-> write_file({\"path\": \"stats.py\", \"content\": \"def mean(numbers):\\n    return sum(numbers) / l)\n   written stats.py (122 chars)\nsay:",
+          "error": null
+        }
+      ],
+      "error": null
+    }
+  ]
+}
