@@ -194,3 +194,25 @@ One caveat recorded on purpose: a single run is not evidence. A third 4B run in 
 because the model chattered ("I will fix the add function…") and never called `write_file`; the two
 repeat runs above scored 1.0. Variance is real and is reported, not averaged away.
 
+## 2026-11-03 — a red test run now outranks the LLM verifier
+
+The hard suite showed the failure mode: the verifier replied `VERIFIED` to an answer that was wrong,
+because it has no ground truth. The repair round lived in the bench client only. It now lives in the
+product too (`duo`, not just the harness):
+
+- `duo` reads the newest *check* tool result (`run_tests`, `pytest`, `lint`, `build`, …) before it
+  asks the verifier. Exit code ≠ 0 or a "N failed" summary is authoritative: the executor is called
+  again with the failure as feedback, and the LLM is never consulted.
+- A green result finishes immediately — no 27B opinion on something the tests already proved.
+- After `max_verify_rounds` the failure is returned as-is; there is no path where a red suite ends
+  in a confident answer. Opt-out: `DuoConfig(respect_tool_checks=False)`.
+
+Measured on the code suite, duo forced, two runs: **1.0 in 65.0 s** and **1.0 in 73.1 s**, against
+**66.4 s / 65.2 s** before the change. So: no measurable score or time change, and that is the honest
+reading. What changed is the guarantee, not the number — a wrong answer can no longer be certified
+by an opinion.
+
+Tests: 9 new cases in `tests/test_duo_mechanical.py`, including "a non-check tool is not a verdict",
+"a red exit code sends the executor back", "a green exit code skips the verifier" and the opt-out.
+
+

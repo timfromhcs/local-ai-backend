@@ -8,6 +8,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Iterator
@@ -35,6 +36,7 @@ class DuoConfig:
     verifier: str = "bonsai-27b"
     fast: str = "jev-1.5b"
     max_verify_rounds: int = 3
+    respect_tool_checks: bool = True   # a red test run outranks an LLM verdict
     plan_max_tokens: int = 1500      # thinking is ON: the budget must cover reasoning + the short answer
     verify_max_tokens: int = 1500
     state_ttl_s: float = 6 * 3600
@@ -62,6 +64,55 @@ def _text(m: dict) -> str:
 
 def _strip(cid: str | None) -> str | None:
     return cid[2:] if cid and cid[:2] in ("x_", "v_", "b_") else cid
+
+
+# A tool whose result can decide correctness on its own. `duo` refuses to trust an LLM verdict when
+# such a result says "failed": observed on the hard suite, a verifier without ground truth replied
+# VERIFIED to a wrong answer.
+CHECK_TOOL_RE = re.compile(r"(^|[_\-. ])(tests?|pytest|check|verify|test_suite|lint|typecheck|build|ci)($|[_\-. ])",
+                           re.I)
+
+
+def _tool_names(messages: list[dict]) -> dict[str, str]:
+    """Map tool_call_id -> tool name, because an OpenAI tool message carries the id, not the name."""
+    names: dict[str, str] = {}
+    for m in messages:
+        for c in m.get("tool_calls") or []:
+            if isinstance(c, dict):
+                names[str(c.get("id"))] = str((c.get("function") or {}).get("name") or "")
+    return names
+
+
+def mechanical_verdict(messages: list[dict]) -> tuple[str, str] | None:
+    """('pass'|'fail', output) from the newest *check* tool result, or None when there is no verdict.
+
+    Deliberately conservative: only a recognisable test/check tool counts, and only exit codes or
+    pytest-style summaries are read. Anything else stays an LLM judgement.
+    """
+    names = _tool_names(messages)
+    for m in reversed(messages):
+        if m.get("role") != "tool":
+            continue
+        name = names.get(str(m.get("tool_call_id")), "")
+        if not CHECK_TOOL_RE.search(name):
+            return None
+        out = _text(m)
+        low = out.lower()
+        m_exit = re.search(r"exit(?:ed)?[ =:]+(-?\d+)", low)
+        if m_exit:
+            return ("pass" if int(m_exit.group(1)) == 0 else "fail"), out
+        passed = re.search(r"\b(\d+) passed\b", low)
+        failed = re.search(r"\b(\d+) (?:failed|error|errors)\b", low)
+        if passed and not failed:
+            return "pass", out
+        if failed:
+            return "fail", out
+        if re.search(r"\ball tests passed\b|\bok\b\s*$", low):
+            return "pass", out
+        if "traceback" in low or "assertionerror" in low:
+            return "fail", out
+        return None
+    return None
 
 
 class Duo:
@@ -131,6 +182,18 @@ class Duo:
 
     async def _verify(self, body: dict, st: _State, executor_resp: dict | None = None) -> dict:
         msgs = body["messages"]
+        # a check result is a fact, an LLM opinion is not: never let a verdict outrank the tests
+        verdict = mechanical_verdict(msgs) if self.cfg.respect_tool_checks else None
+        if verdict is not None:
+            state, output = verdict
+            if state == "pass":
+                st.feedback = ""
+                return self._final(st, executor_resp, note="tests passed (mechanical check)")
+            st.feedback = output[-800:]
+            if st.rounds < self.cfg.max_verify_rounds:
+                st.rounds += 1
+                return await self._execute(body, st)
+            return self._final(st, executor_resp, note="tests still failing (mechanical check)")
         user = (f"Task:\n{self._task(msgs)}\n\nPlan:\n{st.plan or '(none)'}\n\nWork so far:\n{self._activity(msgs)}"
                 f"\n\nExecutor's latest answer:\n{st.answer or '(none yet)'}")
         vbody = {"model": self.cfg.verifier, "temperature": 0.1, "max_tokens": self.cfg.verify_max_tokens,
