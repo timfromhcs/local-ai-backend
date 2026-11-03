@@ -66,6 +66,50 @@ class BenchTask:
     weight: float
     score: Callable[[str], float]
     category: str = "core"
+    tools: tuple[dict, ...] = ()          # tool schemas the client offers; enables the duo loop
+    score_message: Callable[[dict], float] | None = None  # when the answer is a tool call, not text
+
+
+# Two small tools so a task can require an actual call instead of prose about one.
+FILE_TOOLS = (
+    {"type": "function", "function": {"name": "list_files", "description": "List files in a directory",
+                                      "parameters": {"type": "object", "properties": {"path": {"type": "string"}},
+                                                     "required": ["path"]}}},
+    {"type": "function", "function": {"name": "read_file", "description": "Read a text file",
+                                      "parameters": {"type": "object", "properties": {"path": {"type": "string"}},
+                                                     "required": ["path"]}}},
+)
+
+
+def score_expected_tool_calls(required: tuple[str, ...]) -> Callable[[dict], float]:
+    """1.0 only when the message carries tool calls with exactly the expected names, in order."""
+    def score(message: dict) -> float:
+        calls = message.get("tool_calls") or []
+        names = tuple(c.get("function", {}).get("name") for c in calls)
+        return 1.0 if names == required else 0.0
+    return score
+
+
+TOOL_TASKS: tuple[BenchTask, ...] = (
+    BenchTask(
+        "tool-list-read",
+        "List the files in C:\\work, then read package.json. Answer with tool calls only.",
+        1.0,
+        lambda a: 0.0,  # text alone never satisfies a tool task
+        "tools",
+        FILE_TOOLS,
+        score_expected_tool_calls(("list_files", "read_file")),
+    ),
+    BenchTask(
+        "tool-single",
+        "Read C:\\work\\package.json and nothing else.",
+        1.0,
+        lambda a: 0.0,
+        "tools",
+        FILE_TOOLS,
+        score_expected_tool_calls(("read_file",)),
+    ),
+)
 
 
 FAST: tuple[BenchTask, ...] = (
@@ -84,7 +128,7 @@ FAST: tuple[BenchTask, ...] = (
     BenchTask("concise", "Explain in exactly one sentence what a KV cache does.", 0.5, score_one_sentence, "format"),
 )
 
-SUITES: dict[str, tuple[BenchTask, ...]] = {"fast": FAST}
+SUITES: dict[str, tuple[BenchTask, ...]] = {"fast": FAST, "tools": TOOL_TASKS}
 
 
 @dataclass

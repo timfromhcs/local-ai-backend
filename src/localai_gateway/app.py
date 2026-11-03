@@ -135,7 +135,8 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
             return None
         try:
             r = await forward_chat(ep.base_url, {"model": cfg.fast, "max_tokens": 6, "temperature": 0,
-                                                 "messages": [{"role": "user", "content": prompt}]}, holder["client"])
+                                                 "messages": [{"role": "user", "content": prompt}]},
+                                   holder["client"], getattr(ep, "api_key", None))
             return (r["choices"][0]["message"].get("content") or "").strip()
         finally:
             await scheduler.release(cfg.fast)
@@ -229,6 +230,9 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
                 # measured: Qwen3 spends the whole budget on reasoning and returns empty content,
                 # which scores 0 for every task. Scoring does not need a reasoning trace.
                 request["chat_template_kwargs"] = {"enable_thinking": False}
+            if task.tools:
+                request["tools"] = list(task.tools)
+                request["tool_choice"] = "auto"
             try:
                 # virtual models (duo) are orchestrated by the app, not loaded by the scheduler
                 resp = await (duo.chat(request) if virtual else call_model(model_id, request))
@@ -236,7 +240,11 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
                 content = msg.get("content") or ""
                 if isinstance(content, list):
                     content = " ".join(b.get("text", "") for b in content if isinstance(b, dict))
-                score, err = float(task.score(content)), None
+                if task.score_message is not None:
+                    score = float(task.score_message(msg))
+                else:
+                    score = float(task.score(content))
+                err = None
             except Exception as exc:  # one broken task must not kill the run
                 content, score, err = "", 0.0, f"{type(exc).__name__}: {exc}"[:300]
             rows.append({

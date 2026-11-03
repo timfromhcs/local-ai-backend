@@ -1,0 +1,30 @@
+{
+  "at": "2026-11-03T17:39:50.163Z",
+  "suite": "tools",
+  "runs": [
+    {
+      "model": "qwen3-4b",
+      "status": 502,
+      "score": null,
+      "seconds": 19.6,
+      "rows": [],
+      "error": {
+        "code": "bench_failed",
+        "reason": "every task failed",
+        "first": "BackendError: backend unreachable: ReadError('')"
+      }
+    },
+    {
+      "model": "duo",
+      "status": 502,
+      "score": null,
+      "seconds": 0.2,
+      "rows": [],
+      "error": {
+        "code": "bench_failed",
+        "reason": "every task failed",
+        "first": "FileNotFoundError: [WinError 2] Das System kann die angegebene Datei nicht finden"
+      }
+    }
+  ]
+}

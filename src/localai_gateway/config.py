@@ -53,6 +53,14 @@ class Settings(BaseModel):
     model_dir: Path
     port: int = 8090  # 8080 belongs to the Jev server
     cache_dir: Path = PROJECT_ROOT / "cache" / "slots"  # SSD: llama-server slot states (precomputed OpenCode prefix)
+    llama_server: Path | None = None  # LOCALAI_LLAMA_SERVER: use a runtime from elsewhere (e.g. a shared Vulkan build)
+    sd_server: Path | None = None      # LOCALAI_SD_SERVER
+
+    def llama_path(self) -> Path:
+        return self.llama_server or (self.bin_dir / "llama" / "llama-server.exe")
+
+    def sd_path(self) -> Path:
+        return self.sd_server or (self.bin_dir / "sd" / "sd-server.exe")
 
     @classmethod
     def default(cls) -> "Settings":
@@ -61,4 +69,6 @@ class Settings(BaseModel):
             budget_mb=int(total_mb * 0.7),
             bin_dir=PROJECT_ROOT / "bin",
             model_dir=PROJECT_ROOT,
+            llama_server=Path(os.environ["LOCALAI_LLAMA_SERVER"]) if os.environ.get("LOCALAI_LLAMA_SERVER") else None,
+            sd_server=Path(os.environ["LOCALAI_SD_SERVER"]) if os.environ.get("LOCALAI_SD_SERVER") else None,
         )

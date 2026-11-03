@@ -16,7 +16,14 @@ from pathlib import Path
 
 import httpx
 
-from localai_gateway.benchscore import FAST, BenchResult, BenchTask, score_patch_shape, score_route  # noqa: F401
+from localai_gateway.benchscore import (  # noqa: F401
+    FAST,
+    TOOL_TASKS,
+    BenchResult,
+    BenchTask,
+    score_patch_shape,
+    score_route,
+)
 
 LONG: tuple[BenchTask, ...] = FAST + (
     BenchTask("refactor", "Refactor a blocking request handler into async, name the file and show the diff.",
@@ -31,23 +38,25 @@ LONG: tuple[BenchTask, ...] = FAST + (
               "reasoning"),
 )
 
-SUITES: dict[str, tuple[BenchTask, ...]] = {"fast": FAST, "long": LONG}
+SUITES: dict[str, tuple[BenchTask, ...]] = {"fast": FAST, "long": LONG, "tools": TOOL_TASKS}
 
 
-def complete(client: httpx.Client, base_url: str, model: str, prompt: str, max_tokens: int = 400) -> tuple[str, float]:
+def complete(client: httpx.Client, base_url: str, model: str, prompt: str, max_tokens: int = 400,
+             tools: list[dict] | None = None) -> tuple[dict, float]:
+    """Returns the whole message (so tool calls can be scored) and the elapsed seconds."""
     started = time.perf_counter()
-    r = client.post(
-        f"{base_url.rstrip('/')}/v1/chat/completions",
-        json={"model": model, "messages": [{"role": "user", "content": prompt}],
-              "max_tokens": max_tokens, "temperature": 0},
-    )
+    body: dict = {"model": model, "messages": [{"role": "user", "content": prompt}],
+                  "max_tokens": max_tokens, "temperature": 0}
+    if tools:
+        body["tools"] = tools
+        body["tool_choice"] = "auto"
+    r = client.post(f"{base_url.rstrip('/')}/v1/chat/completions", json=body)
     r.raise_for_status()
-    data = r.json()
-    msg = data["choices"][0]["message"]
+    msg = r.json()["choices"][0]["message"]
     content = msg.get("content") or ""
     if isinstance(content, list):
-        content = " ".join(b.get("text", "") for b in content if isinstance(b, dict))
-    return content, time.perf_counter() - started
+        msg["content"] = " ".join(b.get("text", "") for b in content if isinstance(b, dict))
+    return msg, time.perf_counter() - started
 
 
 def run_suite(base_url: str, model: str, suite: str = "fast", timeout: float = 300.0) -> BenchResult:
@@ -55,8 +64,11 @@ def run_suite(base_url: str, model: str, suite: str = "fast", timeout: float = 3
     with httpx.Client(timeout=timeout) as client:
         for task in SUITES[suite]:
             try:
-                answer, secs = complete(client, base_url, model, task.prompt)
-                score, error = float(task.score(answer)), None
+                msg, secs = complete(client, base_url, model, task.prompt,
+                                     tools=list(task.tools) or None)
+                answer = msg.get("content") or ""
+                score = float(task.score_message(msg)) if task.score_message else float(task.score(answer))
+                error = None
             except Exception as exc:  # a broken task must not kill the run
                 answer, secs, score, error = "", 0.0, 0.0, f"{type(exc).__name__}: {exc}"[:300]
             rows.append({

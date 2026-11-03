@@ -38,9 +38,8 @@ class _Entry:
 
 def default_command(settings: Settings):
     def build(spec: ModelSpec, port: int) -> tuple[list[str], str]:
-        exe = "llama-server.exe" if spec.runtime == "llama" else "sd-server.exe"
-        sub = "llama" if spec.runtime == "llama" else "sd"
-        argv = [str(settings.bin_dir / sub / exe), "--host" if spec.runtime == "llama" else "--listen-ip", "127.0.0.1"]
+        exe = settings.llama_path() if spec.runtime == "llama" else settings.sd_path()
+        argv = [str(exe), "--host" if spec.runtime == "llama" else "--listen-ip", "127.0.0.1"]
         argv += ["--port" if spec.runtime == "llama" else "--listen-port", str(port)]
         if spec.runtime == "llama":
             argv += ["--model", str(spec.files[0]), "--slot-save-path", str(settings.cache_dir)]

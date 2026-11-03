@@ -191,6 +191,21 @@ class Supervisor:
         mp._monitor = asyncio.create_task(self._watch(mp))
         return mp
 
+    async def _wait_exit(self, mp: ManagedProcess) -> None:
+        """Wait for the process to exit.
+
+        On Windows `asyncio` can raise FileNotFoundError when the OS already reaped the handle
+        while the process is still serving (seen as a watcher crash that marked a healthy model
+        as failed). Fall back to polling psutil instead of treating the model as dead.
+        """
+        try:
+            await mp._proc.wait()
+            return
+        except (FileNotFoundError, ProcessLookupError, OSError):
+            log.warning("process handle for pid %s was lost; polling liveness instead", mp.pid)
+        while not mp.stopped and _alive(mp._proc, mp._ctime):
+            await asyncio.sleep(self.poll_interval)
+
     async def _watch(self, mp: ManagedProcess) -> None:
         try:
             await self._watch_inner(mp)
@@ -205,7 +220,7 @@ class Supervisor:
         attempts = 0
         healthy_since = self._clock()
         while not mp.stopped:
-            await mp._proc.wait()
+            await self._wait_exit(mp)
             if mp.stopped:
                 return
             if self._clock() - healthy_since >= self.stable_after_s:
