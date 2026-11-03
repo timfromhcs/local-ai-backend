@@ -95,3 +95,25 @@ message's `tool_calls`, not on text; prose that merely describes a call scores 0
   every check-up), the supervisor died on a lost Windows process handle and marked a healthy model
   as failed, and `bin/llama/llama-server.exe` vanished from this machine — the runtime path is now
   overridable via `LOCALAI_LLAMA_SERVER`, and `doctor` reports the effective path.
+
+## 2026-11-03 — the loop, finally measured (forced mode)
+
+`localai_mode` was added (PR #56) so the plan/execute/verify loop can be demanded instead of hoped
+for. Same two tool tasks, all three lanes:
+
+| Lane | Score | Wall time | What ran |
+|---|---|---|---|
+| qwen3-4b alone (cold) | 1.0 | 178 s | the executor only, cold start included |
+| duo, automatic | 1.0 | **3.7 s** | fast lane (1.5B) — no planning |
+| duo, `mode: "duo"` | 1.0 | 30.1 s | planner 27B → executor 4B → verifier 27B |
+
+### Reading this honestly
+
+On two simple tool tasks **all three lanes score 1.0**, so the loop buys no accuracy here — it
+costs ~26 s of planner/verifier time. That is the expected shape: the loop exists for tasks where
+the 4B fails, and this suite is not hard enough to show it. Reporting "duo is better" from these
+numbers would be dishonest; reporting "the loop runs, is measurable, and costs 26 s on this
+hardware" is the truth.
+
+Next: tasks that the 4B actually fails (its weakest categories are routing and multi-step math
+from the fast-suite run), where the verifier has something to correct.
