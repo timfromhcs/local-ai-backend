@@ -75,6 +75,7 @@
 
       <div class="tabs" role="tablist">
         <button role="tab" aria-selected="true" data-tab="browser" data-i18n="demo.tabA">A · In-browser (ONNX)</button>
+        <button role="tab" aria-selected="false" data-tab="gguf" data-i18n="demo.tabC">C · GGUF in the browser (WASM)</button>
         <button role="tab" aria-selected="false" data-tab="local" data-i18n="demo.tabB">B · My local gateway</button>
       </div>
 
@@ -99,6 +100,35 @@
         <p class="note" data-i18n="demo.noteA">
           Weights are downloaded once as ONNX from the Hugging Face CDN and cached by the browser. GGUF is an
           inference format, so the browser path uses ONNX; real weight training stays on your machine.
+        </p>
+      </div>
+
+      <div class="panel" id="panel-gguf" role="tabpanel" hidden>
+        <div class="row">
+          <label for="gguf-model" data-i18n="gguf.model">GGUF model</label>
+          <select id="gguf-model">
+            <option value="lfm350">LFM2.5 350M · q4_k_m (~0.25 GB)</option>
+            <option value="qwen05" selected>Qwen2.5 0.5B · q4_k_m (~0.4 GB)</option>
+            <option value="qwen15">Qwen2.5 1.5B · q4_k_m (~1.1 GB)</option>
+            <option value="smol360">SmolLM2 360M · q4_k_m (~0.3 GB)</option>
+          </select>
+          <button class="btn primary" id="load-gguf" data-i18n="gguf.load">Load GGUF</button>
+          <button class="btn" id="stop-gguf" disabled data-i18n="gguf.stop">Stop</button>
+        </div>
+        <div class="progress" hidden id="gguf-progress"><div id="gguf-bar"></div></div>
+        <div class="status" id="gguf-status" aria-live="polite" data-i18n="gguf.idle">
+          No model loaded. The first load downloads the GGUF once, then it is cached in your browser.
+        </div>
+        <div class="chat" id="chat-gguf" aria-live="polite"></div>
+        <form class="compose" id="form-gguf">
+          <label class="sr" for="prompt-gguf" data-i18n="demo.prompt">Prompt</label>
+          <textarea id="prompt-gguf" rows="2" placeholder="Write a haiku about a laptop running a 27B model." data-i18n-ph="gguf.placeholder"></textarea>
+          <button class="btn primary" type="submit" data-i18n="demo.send">Send</button>
+        </form>
+        <p class="note" data-i18n="gguf.note">
+          This is llama.cpp compiled to WebAssembly, running the same GGUF format as the local gateway.
+          No server is involved. Without COOP/COEP headers it runs single-threaded, so a 0.5B model is the
+          honest sweet spot; q2/q4 quantisation is allowed and labelled.
         </p>
       </div>
 

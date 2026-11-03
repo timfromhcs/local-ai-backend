@@ -8,11 +8,26 @@ import psutil
 from pydantic import BaseModel
 
 
+def _pick_root(here: Path, cwd: Path, home: str | None) -> Path:
+    """Pick the writable project root for a non-frozen install.
+
+    - LOCALAI_HOME always wins (containers, portable layouts).
+    - A source checkout has models.yaml two levels above config.py.
+    - A pip-installed wheel does NOT live in a checkout, so falling back to
+      parents[2] pointed at site-packages and tried to create /usr/local/lib/python3.13/cache
+      (found by the container smoke test). Use the working directory instead.
+    """
+    if home:
+        return Path(home)
+    candidate = here.parents[2]
+    return candidate if (candidate / "models.yaml").exists() else cwd
+
+
 def _project_root() -> Path:
-    """Source tree in dev, the exe's folder when frozen (models/bin live next to it)."""
+    """Source tree in dev, the exe's folder when frozen, cwd for site-packages."""
     if getattr(sys, "frozen", False):
         return Path(os.environ.get("LOCALAI_HOME", Path(sys.executable).parent))
-    return Path(__file__).resolve().parents[2]
+    return _pick_root(Path(__file__).resolve(), Path.cwd(), os.environ.get("LOCALAI_HOME"))
 
 
 def bundle_dir() -> Path:

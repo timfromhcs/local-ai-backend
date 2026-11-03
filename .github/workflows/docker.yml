@@ -1,0 +1,71 @@
+name: container
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    paths: ["api/**", "src/**", "pyproject.toml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: build + smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: api/Dockerfile
+          load: true
+          tags: localai-gateway:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Run and probe /healthz
+        run: |
+          docker run -d --name gw -p 18090:8090 localai-gateway:ci
+          for i in $(seq 1 30); do
+            sleep 1
+            if curl -fsS http://127.0.0.1:18090/healthz; then ok=1; break; fi
+          done
+          test "${ok:-0}" = "1" || { docker logs gw; exit 1; }
+          docker exec gw python -c "import urllib.request,json; print(json.load(urllib.request.urlopen('http://127.0.0.1:8090/v1/models'))['object'])"
+          docker rm -f gw
+
+  publish:
+    name: publish to ghcr
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: api/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha

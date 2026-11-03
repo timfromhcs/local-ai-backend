@@ -12,8 +12,7 @@ const t = (key, fallback) => (window.I18N?.t(key) ?? fallback ?? key);
 for (const btn of $$('.tabs button')) {
   btn.addEventListener('click', () => {
     $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
-    $('#panel-browser').hidden = btn.dataset.tab !== 'browser';
-    $('#panel-local').hidden = btn.dataset.tab !== 'local';
+    for (const panel of $$('.panel[id^="panel-"]')) panel.hidden = panel.id !== `panel-${btn.dataset.tab}`;
   });
 }
 
@@ -391,6 +390,123 @@ $('#form-local').addEventListener('submit', async (ev) => {
     }
     out.textContent = acc || t('demo.empty');
     if (acc) out.textContent += `\n\n— ${chunks} ${t('demo.chunks')}, ${((performance.now() - started) / 1000).toFixed(1)}s`;
+  } catch (e) {
+    out.textContent = `${t('demo.failed')}: ${e.message}`;
+  }
+});
+
+/* ------------------------------------------------------- GGUF in the browser
+   llama.cpp compiled to WebAssembly (wllama). Same GGUF format as the local
+   gateway, no server in the loop. Single-threaded without COOP/COEP. */
+const GGUF = {
+  lfm350: { repo: 'LiquidAI/LFM2.5-350M-GGUF', file: 'LFM2.5-350M-Q4_K_M.gguf', label: 'LFM2.5 350M' },
+  qwen05: { repo: 'Qwen/Qwen2.5-0.5B-Instruct-GGUF', file: 'qwen2.5-0.5b-instruct-q4_k_m.gguf', label: 'Qwen2.5 0.5B' },
+  qwen15: { repo: 'Qwen/Qwen2.5-1.5B-Instruct-GGUF', file: 'qwen2.5-1.5b-instruct-q4_k_m.gguf', label: 'Qwen2.5 1.5B' },
+  smol360: { repo: 'HuggingFaceTB/SmolLM2-360M-Instruct-GGUF', file: 'smollm2-360m-instruct-q4_k_m.gguf', label: 'SmolLM2 360M' },
+};
+
+const gguf = { instance: null, key: null, busy: false };
+
+async function getWllama() {
+  if (!gguf.instance) {
+    const mod = await import('https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/index.js');
+    gguf.instance = new mod.Wllama({
+      default: 'https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/src/wasm/wllama.wasm',
+    });
+  }
+  return gguf.instance;
+}
+
+$('#load-gguf').addEventListener('click', async () => {
+  if (gguf.busy) return;
+  const key = $('#gguf-model').value;
+  const spec = GGUF[key];
+  const btn = $('#load-gguf');
+  const box = $('#gguf-progress');
+  const bar = $('#gguf-bar');
+  const status = $('#gguf-status');
+  btn.disabled = true;
+  box.hidden = false;
+  bar.style.width = '2%';
+  gguf.busy = true;
+  setStatus(status, `${t('gguf.loading')} ${spec.label} (${spec.repo})`, '');
+  const started = performance.now();
+  try {
+    const w = await getWllama();
+    if (gguf.key && gguf.key !== key) {
+      try { await w.exit(); } catch { /* already gone */ }
+    }
+    await w.loadModelFromHF(
+      { repo: spec.repo, file: spec.file },
+      {
+        n_ctx: 4096,
+        n_threads: Math.max(1, Math.min(4, (navigator.hardwareConcurrency ?? 4) - 1)),
+        progressCallback: ({ loaded, total }) => {
+          if (total) bar.style.width = `${Math.round((loaded / total) * 100)}%`;
+          setStatus(status, `${spec.label} · ${humanBytes(loaded)}/${humanBytes(total)}`, '');
+        },
+      },
+    );
+    gguf.key = key;
+    const secs = ((performance.now() - started) / 1000).toFixed(1);
+    setStatus(status, `${t('gguf.ready')} · ${spec.label} · ${secs}s · WASM`, 'good');
+    bubble($('#chat-gguf'), 'sys', `${t('gguf.ready')} (${secs}s)`);
+    $('#stop-gguf').disabled = false;
+  } catch (e) {
+    setStatus(status, `${t('gguf.failed')}: ${String(e.message || e).slice(0, 200)}`, 'bad');
+    bubble($('#chat-gguf'), 'sys', `${t('gguf.failed')}: ${e.message}`);
+  } finally {
+    gguf.busy = false;
+    btn.disabled = false;
+    box.hidden = true;
+  }
+});
+
+$('#stop-gguf').addEventListener('click', async () => {
+  if (!gguf.instance) return;
+  try { await gguf.instance.exit(); } catch { /* ignore */ }
+  gguf.instance = null;
+  gguf.key = null;
+  $('#stop-gguf').disabled = true;
+  setStatus($('#gguf-status'), t('gguf.idle'), '');
+  bubble($('#chat-gguf'), 'sys', t('gguf.stopped'));
+});
+
+$('#form-gguf').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const input = $('#prompt-gguf');
+  const text = input.value.trim();
+  if (!text) return;
+  if (!gguf.instance || !gguf.key) { bubble($('#chat-gguf'), 'sys', t('gguf.loadFirst')); return; }
+  input.value = '';
+  bubble($('#chat-gguf'), 'user', text);
+  const out = bubble($('#chat-gguf'), 'bot', '…');
+  const started = performance.now();
+  let acc = '';
+  let chunks = 0;
+  try {
+    const w = gguf.instance;
+    const stream = await w.createChatCompletion({
+      messages: [
+        { role: 'system', content: 'You are a concise local assistant. Answer in at most 120 words.' },
+        { role: 'user', content: text },
+      ],
+      stream: true,
+      max_tokens: 256,
+      temperature: 0.4,
+      cache_prompt: true,
+    });
+    for await (const chunk of stream) {
+      const delta = chunk.choices?.[0]?.delta?.content ?? '';
+      if (delta) {
+        acc += delta;
+        chunks += 1;
+        out.textContent = acc;
+        $('#chat-gguf').scrollTop = $('#chat-gguf').scrollHeight;
+      }
+    }
+    const secs = (performance.now() - started) / 1000;
+    out.textContent = acc ? `${acc}\n\n— ${chunks} ${t('demo.chunks')}, ${secs.toFixed(1)}s, ${(chunks / Math.max(secs, 0.1)).toFixed(1)} tok/s` : t('demo.empty');
   } catch (e) {
     out.textContent = `${t('demo.failed')}: ${e.message}`;
   }

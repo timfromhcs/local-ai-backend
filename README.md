@@ -18,8 +18,8 @@
 </p>
 
 <p align="center">
-  <a href="https://local-ai-backend-blue.vercel.app"><b>Live demo</b></a> ·
-  <a href="docs/perf-log.md">Performance log</a> ·
+  <a href="https://local-ai-backend-blue.vercel.app"><b>Live demo</b></a> Â·
+  <a href="docs/perf-log.md">Performance log</a> Â·
   <a href="docs/superpowers/plans/2026-11-03-v0.2.0-stable.md">Release plan</a>
 </p>
 
@@ -31,14 +31,14 @@ A local gateway for GGUF models on Windows (Vulkan), written to be measured rath
 marketed. It gives your editor, scripts and MCP servers a single
 `http://127.0.0.1:8090/v1` endpoint, and decides for you which model answers.
 
-- **Lazy loading** — no model is loaded until the first request.
-- **RAM budget** — a scheduler keeps the working set under a configurable limit and evicts
+- **Lazy loading** â€” no model is loaded until the first request.
+- **RAM budget** â€” a scheduler keeps the working set under a configurable limit and evicts
   the least recently used model.
-- **Refcounts** — a model is never stopped mid-stream, even if the client disconnects.
-- **`duo` virtual model** — the big model plans and verifies, the small model executes with
+- **Refcounts** â€” a model is never stopped mid-stream, even if the client disconnects.
+- **`duo` virtual model** â€” the big model plans and verifies, the small model executes with
   tools, errors escalate deterministically instead of looping.
-- **Prompt-prefix cache** — llama-server slot state is persisted to SSD and restored at start.
-- **Single-file EXE** — the gateway ships without model weights, on purpose.
+- **Prompt-prefix cache** â€” llama-server slot state is persisted to SSD and restored at start.
+- **Single-file EXE** â€” the gateway ships without model weights, on purpose.
 
 ## Quick start
 
@@ -59,17 +59,41 @@ curl http://127.0.0.1:8090/v1/chat/completions ^
   -d "{\"model\":\"duo\",\"messages\":[{\"role\":\"user\",\"content\":\"hello\"}]}"
 ```
 
+Three more ways to run it:
+
+```powershell
+# container (API only, no GPU; models stay on the host)
+docker build -f api/Dockerfile -t localai-gateway .
+docker run -p 8090:8090 localai-gateway
+
+# npm launcher: downloads the matching release binary and verifies its SHA256
+npx @hcsmedia/localai-gateway --doctor
+
+# MCP: expose the running gateway to any MCP client
+LOCALAI_GATEWAY_URL=http://127.0.0.1:8090 node servers/localai-gateway-mcp/index.js
+```
+
 Or download the built binary from
 [Releases](https://github.com/timfromhcs/local-ai-backend/releases/latest) and verify it:
 
 ```powershell
-gh release download v0.2.0 -p localai-gateway.exe -p SHA256SUMS.txt
+gh release download v0.3.0 -p localai-gateway.exe -p SHA256SUMS.txt
 Get-FileHash .\localai-gateway.exe -Algorithm SHA256   # compare with SHA256SUMS.txt
-.\localai-gateway.exe --version                        # 0.2.0
+.\localai-gateway.exe --version                        # 0.3.0
 ```
 
-The EXE is unsigned, so Windows SmartScreen warns on first run ("More info → Run anyway").
+The EXE is unsigned, so Windows SmartScreen warns on first run ("More info â†’ Run anyway").
 That is stated here instead of hidden; a code-signing certificate is not configured yet.
+
+## Surfaces
+
+| Surface | What runs there | Limit |
+|---|---|---|
+| Windows EXE / wheel | the gateway + llama-server (Vulkan) | needs your GGUF files |
+| Docker (`api/Dockerfile`, `ghcr.io/timfromhcs/local-ai-backend`) | the gateway API/MCP | no GPU, no weights in the image |
+| Vercel (static `web/`) | ONNX tier, **GGUF via WASM (wllama)**, lab | browser memory only |
+| Phone browser | same page, responsive 320â†’2560 px | â‰¤ 1.5B q4 realistically |
+| MCP (`servers/localai-gateway-mcp`) | status, models, chat, benchmark, doctor | talks to a running gateway |
 
 Python source instead of the exe:
 
@@ -88,50 +112,50 @@ llama.cpp Vulkan build. Full table and rejected experiments: [`docs/perf-log.md`
 | Metric | Value | Notes |
 |---|---|---|
 | Bonsai 2 27B q4 decode | **5.9 tok/s** | 88 GB/s theoretical RAM bandwidth is the wall |
-| Same model, prefill | **~32 tok/s** | ≈50 % of FP32 peak; `-ub 256` won the sweep |
+| Same model, prefill | **~32 tok/s** | â‰ˆ50 % of FP32 peak; `-ub 256` won the sweep |
 | OpenCode prompt, 16.2k tokens | **0.8 s** prompt phase, 5.0 s total | cached prefix reused |
-| Same prompt, cold | **70–190 s** | why prefix caching is the biggest lever |
+| Same prompt, cold | **70â€“190 s** | why prefix caching is the biggest lever |
 | Qwen3 4B q4 | **22.6 tok/s** | executor in the duo loop |
 | Qwen2.5 Coder 1.5B q4 | **55.7 tok/s** | System-1 router |
-| Unit tests | **133 passed** | `pytest -m "not real"`, no model downloads |
+| Unit tests | **154 passed** | `pytest -m "not real"`, no model downloads |
 
-What is **not** possible here: 50–100 tok/s on a 27B model (needs ~410–820 GB/s), matrix-core
-speedups (RDNA2 has none), or ROCm being faster (measured ~6× slower than Vulkan on this APU).
+What is **not** possible here: 50â€“100 tok/s on a 27B model (needs ~410â€“820 GB/s), matrix-core
+speedups (RDNA2 has none), or ROCm being faster (measured ~6Ã— slower than Vulkan on this APU).
 The gateway makes the model you have usable; it does not invent bandwidth.
 
 ## Architecture
 
 ```
 client (editor / script / MCP)
-        │  OpenAI chat.completions
-        ▼
-   gateway app  ──► mode controller ──► fast | duo | big-out
-        │                                   │
-        ▼                                   ▼
-   scheduler: RAM budget · LRU · refcount  Jev :8080 (1.5B classifier)
-        │
-        ▼
-   llama-server per model (:18xxx)  ──► slot state on SSD (prompt prefix)
+        â”‚  OpenAI chat.completions
+        â–¼
+   gateway app  â”€â”€â–º mode controller â”€â”€â–º fast | duo | big-out
+        â”‚                                   â”‚
+        â–¼                                   â–¼
+   scheduler: RAM budget Â· LRU Â· refcount  Jev :8080 (1.5B classifier)
+        â”‚
+        â–¼
+   llama-server per model (:18xxx)  â”€â”€â–º slot state on SSD (prompt prefix)
 ```
 
 Errors are structured and stable: `model_not_found` (404), `model_unavailable` (503),
 `does_not_fit` (503), `backend_error` (503). CORS allows explicit origins plus
-`*.vercel.app` previews — never a wildcard.
+`*.vercel.app` previews â€” never a wildcard.
 
 ## The web demo
 
 [`web/`](web/) is a static site (no build step) deployed at
 **https://local-ai-backend-blue.vercel.app**:
 
-- **Path A** runs a small model in the tab via **ONNX** (Transformers.js) on WebGPU, falling
-  back to WebAssembly. GGUF is an inference format for llama.cpp; browsers run ONNX, so the
-  demo uses ONNX and says so.
-- **Path B** connects to your local gateway (`http://127.0.0.1:8090`) — the CORS contract is
-  covered by tests.
-- **Lab** trains a real softmax head on frozen ONNX embeddings (teacher-labelled routes
-  `fast/duo/bigout`) with SGD, and reports accuracy before/after on held-out tasks. That is
-  genuine training of genuine weights — of a head, not of the LLM.
-- **EN / DE / FR**, no framework, 8 sections of long-form "Zero to Hero" documentation.
+- **Path A â€” ONNX (WebGPU/WASM)**: a small ONNX model runs in the tab via Transformers.js.
+- **Path C â€” GGUF (WASM)**: llama.cpp compiled to WebAssembly through **wllama**, loading real
+  GGUF files (LFM2.5 350M, Qwen2.5 0.5B/1.5B, SmolLM2 360M) straight from Hugging Face. Same
+  format as the local gateway, no server in the loop, cached in the browser. Single-threaded
+  without COOP/COEP, which is why 0.5B is the honest sweet spot.
+- **Path B â€” your local gateway**: connects to `http://127.0.0.1:8090`; the CORS contract is tested.
+- **Lab**: trains a real softmax head on frozen ONNX embeddings (teacher-labelled routes) with SGD
+  and reports accuracy before/after. Real training of real weights â€” of a head, not of the LLM.
+- **EN / DE / FR**, no framework, responsive from 320 px, 8 sections of long-form documentation.
 
 ## Benchmark suite
 
@@ -160,7 +184,7 @@ verified by a boot-time probe:
 | basic-memory | 12 | durable markdown knowledge base |
 | memory | 9 | knowledge graph |
 | blender | 9 | 3D, needs Blender running |
-| local-crawl | 6 | local crawler: HTTP fast path → local Chromium, disk cache, robots.txt |
+| local-crawl | 6 | local crawler: HTTP fast path â†’ local Chromium, disk cache, robots.txt |
 | ast-grep | 4 | structural search |
 | context7 | 2 | library docs |
 | fetch | 1 | single-page fetch |
@@ -178,7 +202,7 @@ bench/                 deterministic benchmark suite (fast + long)
 web/                   static ONNX/WebGPU demo, EN/DE/FR, lab
 packaging/             PyInstaller spec + entry point
 scripts/               build-exe.ps1, bonsai-server.ps1, prefix capture
-tests/                 133 hermetic tests (gateway, scheduler, duo, modes, RSI, CORS, bench)
+tests/                 154 hermetic tests (gateway, scheduler, duo, modes, RSI, CORS, bench, docker/npm/mcp surfaces)
 docs/                  perf log, plans, design specs, inventory
 models.yaml            model registry (files, memory estimates, measured flags)
 ```
@@ -192,7 +216,7 @@ git-ignored and never committed.
   intelligence.
 - No browser can run a 27B model. The web demo is a demo, not a substitute for the gateway.
 - Fine-tuning here means LoRA on CPU for small models; there is no CUDA and no bitsandbytes.
-- The RSI lab (chat → training pairs → gated promotion) is partially built. The plan documents
+- The RSI lab (chat â†’ training pairs â†’ gated promotion) is partially built. The plan documents
   exactly which parts exist and which do not.
 - `lance-video` and `slat-3d` are registered as **unsupported** with their real loader errors.
 
@@ -206,3 +230,4 @@ text-diffusion experiments on the iGPU, and a Docker SWE runner for verified epi
 
 Code: MIT. Model weights are **not** included and keep their own licences. The demo page and
 its assets are part of this repository.
+
