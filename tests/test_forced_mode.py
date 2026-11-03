@@ -108,6 +108,38 @@ def test_bad_mode_is_a_structured_400():
     assert r.json()["error"]["code"] == "bad_mode"
 
 
+@pytest.mark.asyncio
+async def test_forced_mode_plans_even_without_tools():
+    """A forced duo run on a plain question must not silently use the fast model."""
+    call = Recorder()
+    duo = Duo(call, DuoConfig(), modes=AlwaysFast())
+    body = {"messages": [{"role": "user", "content": "migrate three services"}], "localai_mode": "duo"}
+    await duo.chat(body)
+    assert call.calls, "the planner must have been called"
+    planned = call.calls[0][0]
+    assert planned == DuoConfig().planner, f"forced duo ran {planned} first"
+
+
+@pytest.mark.asyncio
+async def test_planner_without_tools_says_none_and_verifier_sends_no_null_tools():
+    call = Recorder()
+    duo = Duo(call, DuoConfig(), modes=AlwaysFast())
+    await duo.chat({"messages": [{"role": "user", "content": "migrate three services"}], "localai_mode": "duo"})
+    planner_body = next(sent for model, sent in call.calls if model == DuoConfig().planner)
+    assert "Available tools: none" in planner_body["messages"][-1]["content"]
+    for _, sent in call.calls:
+        if "tools" in sent:
+            assert sent["tools"], "tools must never be sent as null"
+
+
+@pytest.mark.asyncio
+async def test_unforced_short_question_still_takes_the_fast_path():
+    call = Recorder()
+    duo = Duo(call, DuoConfig(), modes=AlwaysFast())
+    await duo.chat({"messages": [{"role": "user", "content": "hi"}], "tools": TOOLS})
+    assert call.calls[0][0] == DuoConfig().executor
+
+
 def test_bench_accepts_a_forced_mode_and_rejects_a_bad_one():
     c = _client(None)
     ok = c.post("/v1/bench", json={"model": "duo", "tasks": ["json"], "mode": "fast"})

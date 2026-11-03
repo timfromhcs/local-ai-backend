@@ -112,6 +112,44 @@ TOOL_TASKS: tuple[BenchTask, ...] = (
 )
 
 
+def score_word(expected: str) -> Callable[[str], float]:
+    """Exactly one word, ignoring surrounding punctuation and case; prose scores 0."""
+    def score(answer: str) -> float:
+        cleaned = answer.strip().strip(".").strip().lower()
+        return 1.0 if cleaned == expected.lower() else 0.0
+    return score
+
+
+# Tasks the 4B measurably fails (routing and multi-step arithmetic in docs/bench-log.md). They are
+# the only place where the planner/verifier can prove it earns its latency.
+HARD_TASKS: tuple[BenchTask, ...] = (
+    BenchTask(
+        "hard-routing",
+        "Migrate three services, keep every test green and prove rollback works. Answer with exactly "
+        "one word: fast, duo or bigout.",
+        1.0,
+        score_word("bigout"),
+        "routing",
+    ),
+    BenchTask(
+        "hard-multi-step",
+        "A model decodes 5.9 tokens per second. There is a 30 second startup before the first token. "
+        "How many tokens does it produce in exactly 10 minutes? Answer with the number only.",
+        1.0,
+        lambda a: score_number(a, 3363),
+        "reasoning",
+    ),
+    BenchTask(
+        "hard-format",
+        "Reply with exactly this and nothing else: STATUS=OK;MODE=duo;TOKENS=3363",
+        1.0,
+        lambda a: 1.0 if a.strip().rstrip(".") == "STATUS=OK;MODE=duo;TOKENS=3363" else 0.0,
+        "format",
+    ),
+)
+
+
+
 FAST: tuple[BenchTask, ...] = (
     BenchTask("routing", "A task needs planning, implementation and verification. Answer with one word: "
                          "fast, duo or bigout.", 1.0, lambda a: score_route(a, "duo"), "routing"),
@@ -128,7 +166,6 @@ FAST: tuple[BenchTask, ...] = (
     BenchTask("concise", "Explain in exactly one sentence what a KV cache does.", 0.5, score_one_sentence, "format"),
 )
 
-SUITES: dict[str, tuple[BenchTask, ...]] = {"fast": FAST, "tools": TOOL_TASKS}
 
 
 @dataclass
@@ -156,3 +193,5 @@ class BenchResult:
             "by_category": self.by_category(),
             "rows": self.rows,
         }
+
+SUITES: dict[str, tuple[BenchTask, ...]] = {"fast": FAST, "tools": TOOL_TASKS, "hard": HARD_TASKS}

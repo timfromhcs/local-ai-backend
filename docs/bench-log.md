@@ -117,3 +117,45 @@ hardware" is the truth.
 
 Next: tasks that the 4B actually fails (its weakest categories are routing and multi-step math
 from the fast-suite run), where the verifier has something to correct.
+
+## 2026-11-03 — hard suite: the loop does not rescue a capability gap
+
+Three tasks were chosen from the fast-suite failures (`docs/hard-bench.json`):
+
+- `hard-routing` — "migrate three services, keep tests green, prove rollback": one word, expected `bigout`
+- `hard-multi-step` — 5.9 tokens/s, 30 s startup, 10 minutes: the number only, expected `3363`
+- `hard-format` — reproduce `STATUS=OK;MODE=duo;TOKENS=3363` exactly
+
+| Lane | Score | Wall time | What happened |
+|---|---|---|---|
+| qwen3-4b alone | **0.333** (1/3) | 13.1 s | format exact; routing answered `fast`; math explained, never stated |
+| duo, automatic | **0.333** | 5.3 s | fast lane; routing answered in 0.13 s |
+| duo, `mode: "duo"` | **0.333** | 18.5 s | planner 27B → executor 4B → verifier 27B, same wrong answers |
+
+### The uncomfortable result
+
+The forced loop **did** run (18.5 s vs 5.3 s automatic, and 30.5 s on a cold planner in a separate
+single-prompt run), and it changed nothing: the planner's steps were followed by an executor that
+still answered `fast`, and the verifier — which has no ground truth — replied `VERIFIED`. A plan
+cannot add knowledge the 4B does not have, and a verifier without a test cannot notice a wrong
+answer. Both routing tasks fail for the same reason; the arithmetic task fails because the model
+writes the method and never the number.
+
+So: on this suite the loop buys **zero accuracy for ~13 s extra**. What it can earn its cost on is a
+task where correctness is *checkable* (run the tests, call the tool) — not a one-word answer that
+needs world knowledge.
+
+### Bug found while measuring
+
+The first forced run scored 0.333 in 0.35 s per task: `localai_mode` was ignored whenever the task
+offered **no tools**, because the no-tools shortcut ran before the forced-mode branch. Fixed in the
+duo tests (`test_forced_mode_plans_even_without_tools`), together with a guard that never forwards
+`tools: null` to a backend. Scores are strict on purpose; nothing was loosened to flatter a model.
+
+### Infrastructure note
+
+Two measurement runs failed with `backend exited with code 1 before becoming healthy` before any
+score was produced: force-killing the gateway leaves `llama-server` children holding Vulkan memory,
+and the next load dies with `ErrorOutOfDeviceMemory`. The gateway now keeps a small ledger of the
+backends it spawned (`cache/backends.json`) and reaps exactly those whose owning process is gone at
+the next start — it never touches processes it did not start.

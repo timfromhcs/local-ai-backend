@@ -76,11 +76,13 @@ class Duo:
         forced = str(body.get("localai_mode") or "").lower() or None
         if forced is not None and forced not in ("fast", "duo", "bigout"):
             raise ValueError(f"localai_mode must be fast, duo or bigout (got {forced!r})")
-        if not tools:
+        # the no-tools shortcut is only valid when the caller did not force a lane; otherwise a
+        # forced plan/execute/verify run on a plain question silently degrades to the fast model
+        if not tools and forced is None:
             chars = sum(len(_text(m)) for m in msgs)
             model = self.cfg.fast if chars < self.cfg.fast_max_chars else self.cfg.executor
             return self._label(await self.call(model, self._upstream(body, model)))
-        key = self._key(msgs, tools)
+        key = self._key(msgs, tools or [])
         if forced is not None:
             mode = Mode(forced)
         else:
@@ -99,8 +101,9 @@ class Duo:
         return await self._execute(body, st)
 
     # ---- phases -------------------------------------------------------------------------------
-    async def _plan(self, msgs: list[dict], tools: list[dict]) -> str:
-        names = ", ".join(t["function"]["name"] for t in tools)
+    async def _plan(self, msgs: list[dict], tools: list[dict] | None) -> str:
+        # a forced lane can reach the planner without any tools (a plain question), so tolerate None
+        names = ", ".join(t["function"]["name"] for t in (tools or [])) or "none"
         body = {"model": self.cfg.planner, "temperature": 0.2, "max_tokens": self.cfg.plan_max_tokens,
                 "messages": [{"role": "system", "content": PLANNER_SYSTEM},
                              {"role": "user", "content": f"Task:\n{self._task(msgs)}\n\nAvailable tools: {names}"}]}
@@ -131,8 +134,9 @@ class Duo:
         user = (f"Task:\n{self._task(msgs)}\n\nPlan:\n{st.plan or '(none)'}\n\nWork so far:\n{self._activity(msgs)}"
                 f"\n\nExecutor's latest answer:\n{st.answer or '(none yet)'}")
         vbody = {"model": self.cfg.verifier, "temperature": 0.1, "max_tokens": self.cfg.verify_max_tokens,
-                 "tools": body.get("tools"),
                  "messages": [{"role": "system", "content": VERIFIER_SYSTEM}, {"role": "user", "content": user}]}
+        if body.get("tools"):  # never send tools=null: some backends reject it
+            vbody["tools"] = body["tools"]
         try:
             resp = await self.call(self.cfg.verifier, vbody)
         except Exception:
