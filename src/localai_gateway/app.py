@@ -123,7 +123,7 @@ def create_app(settings: Settings, registry: dict[str, ModelSpec], scheduler: An
         finally:
             await scheduler.release(model_id)
 
-    cfg = duo_config or DuoConfig()
+    cfg = duo_config or DuoConfig.from_env()
     captures = CaptureLog(settings.model_dir / "rsi")
 
     async def ask_jev(prompt: str) -> str | None:

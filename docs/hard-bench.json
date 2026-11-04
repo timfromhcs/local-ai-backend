@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-03T18:47:40.392Z",
+  "at": "2026-11-04T08:39:07.679Z",
   "suite": "hard",
   "runs": [
     {
@@ -7,26 +7,26 @@
       "lane": "model",
       "status": 200,
       "score": 0.333,
-      "seconds": 13.1,
+      "seconds": 11.7,
       "rows": [
         {
           "id": "hard-routing",
           "score": 0,
-          "seconds": 2.09,
+          "seconds": 0.91,
           "answer": "fast",
           "error": null
         },
         {
           "id": "hard-multi-step",
           "score": 0,
-          "seconds": 9.63,
+          "seconds": 9.31,
           "answer": "To find how many tokens the model produces in exactly 10 minutes, we need to account for both the **startup time** and the **token decoding rate**.\n\n### Step 1: Convert 10 minutes to seconds\n$$\n10 \\te",
           "error": null
         },
         {
           "id": "hard-format",
           "score": 1,
-          "seconds": 1.33,
+          "seconds": 1.43,
           "answer": "STATUS=OK;MODE=duo;TOKENS=3363",
           "error": null
         }
@@ -38,26 +38,26 @@
       "lane": "auto",
       "status": 200,
       "score": 0.333,
-      "seconds": 5.3,
+      "seconds": 7.1,
       "rows": [
         {
           "id": "hard-routing",
           "score": 0,
-          "seconds": 0.13,
+          "seconds": 0.3,
           "answer": "fast",
           "error": null
         },
         {
           "id": "hard-multi-step",
           "score": 0,
-          "seconds": 4.63,
+          "seconds": 6.22,
           "answer": "To determine how many tokens the model produces in exactly 10 minutes, we need to follow these steps:\n\n1. Calculate the total time available for decoding tokens.\n2. Determine the number of tokens prod",
           "error": null
         },
         {
           "id": "hard-format",
           "score": 1,
-          "seconds": 0.48,
+          "seconds": 0.57,
           "answer": "STATUS=OK;MODE=duo;TOKENS=3363",
           "error": null
         }
@@ -68,28 +68,28 @@
       "model": "duo",
       "lane": "duo",
       "status": 200,
-      "score": 0.333,
-      "seconds": 18.5,
+      "score": 0,
+      "seconds": 89,
       "rows": [
         {
           "id": "hard-routing",
           "score": 0,
-          "seconds": 3.13,
-          "answer": "fast",
+          "seconds": 23.04,
+          "answer": "fast\n\n[VERIFIED: fast]",
           "error": null
         },
         {
           "id": "hard-multi-step",
           "score": 0,
-          "seconds": 11.53,
-          "answer": "To find how many tokens the model produces in exactly 10 minutes, we need to account for both the **startup time** and the **token decoding rate**.\n\n### Step 1: Convert 10 minutes to seconds\n$$\n10 \\te",
+          "seconds": 49.27,
+          "answer": "1. Convert 10 minutes to seconds: 10 * 60 = 600.  \n2. Subtract startup time: 600 - 30 = 570.  \n3. Calculate tokens: 5.9 * 570 = 3363.  \n4. Answer: 3363.\n\n[VERIFIED: 3363]",
           "error": null
         },
         {
           "id": "hard-format",
-          "score": 1,
-          "seconds": 3.82,
-          "answer": "STATUS=OK;MODE=duo;TOKENS=3363",
+          "score": 0,
+          "seconds": 16.7,
+          "answer": "STATUS=OK;MODE=duo;TOKENS=3363\n\n[VERIFIED: STATUS=OK;MODE=duo;TOKENS=3363]",
           "error": null
         }
       ],

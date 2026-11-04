@@ -92,7 +92,11 @@ async def test_green_check_finishes_without_asking_the_verifier():
     body = {"messages": convo("run_tests", "exit=0\n.. 2 passed in 0.01s"), "tools": TOOLS}
     result = await duo.chat(body)
     assert result["model"] == "duo"
-    assert "tests passed (mechanical check)" in result["choices"][0]["message"]["content"]
+    # the note lives in the machine-readable field, never in the answer text (a "[VERIFIED: ...]"
+    # suffix broke an exact-format task that the executor had answered correctly)
+    assert result["localai_verification"]["state"] == "mechanical"
+    assert "check tool reported success" in result["localai_verification"]["detail"]
+    assert "[" not in result["choices"][0]["message"]["content"]
     assert not asked_the_verifier(call.calls), "asking a 27B for an opinion is waste"
     assert [m for m, _ in call.calls].count(DuoConfig().planner) == 1, "the planner still runs once"
 
