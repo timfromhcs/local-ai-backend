@@ -253,5 +253,38 @@ The failure is no longer silent: a planner that cannot be reached is named in `l
 (`planner unavailable: …`). Making the 27B loadable again, or measuring a working planner/verifier
 substitute, is the next open item - not something this log pretends is solved.
 
+## 2026-11-04 — why the 27B cannot load, and an error message worth reading
+
+Chased the `failed to read tensor info` from the previous cycle with the pristine build from
+`llama-prism-b12128-d7b2896-bin-win-vulkan-x64.zip` (restored into `bin/llama/`, which is local and
+gitignored). With that build the model is *readable*; the real failure is a VRAM allocation:
+
+```
+ggml_vulkan: Device memory allocation of size 1060751488 failed.
+ggml_vulkan: vk::Device::allocateMemory: ErrorOutOfDeviceMemory
+```
+
+At `-ngl 99` and at `-ngl 60`, with `-c 4096`, while the fast-lane server (2.4 GB) and the desktop
+compositor hold the shared carve-out. So the 27B planner/verifier does not fit on this machine right
+now - a resource limit, not a broken file. What the gateway said about it was:
+
+```
+backend exited with code 1 before becoming healthy
+```
+
+That reads like a code bug and cost time twice. The supervisor now drains the child's stderr into a
+bounded tail and puts the most useful error line into the exception (and therefore into
+`localai_verification.detail`). Live, same request, after the change:
+
+```
+verifier unreachable; planner unavailable: BackendError: bonsai-27b: backend exited with code 1
+before becoming healthy: ggml_vulkan: Device memory allocation of size 1060751488 failed.
+```
+
+Diagnosis is not a fix: until a smaller planner fits (or the fast-lane server yields VRAM), `duo`
+runs without its planner/verifier and says so. The measured numbers in this log keep their earlier
+caveat.
+
+
 
 

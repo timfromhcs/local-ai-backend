@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import asyncio
+import collections
 import logging
+import re
 import os
 import socket
 import subprocess
@@ -19,6 +21,9 @@ from .orphans import forget, record
 
 PORT_RANGE = range(18100, 18200)
 BACKOFF = (1, 2, 4)
+# lines that explain a failed start better than the exit code does
+ERROR_MARKERS = re.compile(r"error|failed|out of memory|OutOfDeviceMemory|no such file|invalid|unsupported",
+                           re.I)
 log = logging.getLogger("localai_gateway.supervisor")
 
 
@@ -117,6 +122,47 @@ async def _kill_tree(proc: Any, ctime: float | None) -> None:
         pass
 
 
+async def _drain_stderr(proc: Any) -> None:
+    """Read the child's stderr into a bounded deque (llama-server logs constantly)."""
+    stream = getattr(proc, "stderr", None)
+    if stream is None:
+        return
+    try:
+        while True:
+            line = await stream.readline()
+            if not line:
+                return
+            tail = getattr(proc, "_stderr_tail", None)
+            if tail is not None:
+                tail.append(line.decode("utf-8", "replace").rstrip())
+    except (asyncio.CancelledError, ValueError, OSError):
+        return
+
+
+async def _settle_stderr(proc: Any) -> None:
+    """Give the drainer a moment to catch the last lines of a dying child."""
+    task = getattr(proc, "_stderr_task", None)
+    if task is None:
+        return
+    try:
+        await asyncio.wait_for(asyncio.shield(task), timeout=1.0)
+    except (asyncio.TimeoutError, asyncio.CancelledError, Exception):
+        pass
+
+
+def _stderr_hint(tail: Any) -> str:
+    """The most useful last line: the first error-looking one, else the last non-empty line."""
+    if not tail:
+        return ""
+    lines = [ln.strip() for ln in list(tail) if ln.strip()]
+    if not lines:
+        return ""
+    for ln in lines:
+        if ERROR_MARKERS.search(ln):
+            return ln[:200]
+    return lines[-1][:200]
+
+
 class Supervisor:
     """Spawns backends, waits for /health, restarts crashed ones with backoff.
 
@@ -151,7 +197,12 @@ class Supervisor:
         kwargs: dict[str, Any] = {}
         if sys.platform == "win32":
             kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
-        proc = await asyncio.create_subprocess_exec(*argv, **kwargs)
+        # keep the tail of the child's stderr: "backend exited with code 1" is not actionable, but
+        # "ErrorOutOfDeviceMemory" is (measured on this machine, 27B planner, 2026-11-04)
+        proc = await asyncio.create_subprocess_exec(*argv, stdout=subprocess.DEVNULL,
+                                                    stderr=subprocess.PIPE, **kwargs)
+        proc._stderr_tail = collections.deque(maxlen=40)
+        proc._stderr_task = asyncio.create_task(_drain_stderr(proc))
         self.last_pid = proc.pid
         if self.ledger is not None:
             record(self.ledger, pid=proc.pid, gateway_pid=os.getpid(), label=argv[0] if argv else "")
@@ -162,7 +213,11 @@ class Supervisor:
         async with httpx.AsyncClient(timeout=2.0) as client:
             while True:
                 if proc.returncode is not None:
-                    raise BackendStartError(f"backend exited with code {proc.returncode} before becoming healthy")
+                    await _settle_stderr(proc)
+                    hint = _stderr_hint(getattr(proc, "_stderr_tail", None))
+                    raise BackendStartError(
+                        f"backend exited with code {proc.returncode} before becoming healthy"
+                        + (f": {hint}" if hint else ""))
                 try:
                     if (await client.get(health_url)).status_code == 200:
                         await asyncio.sleep(0.1)  # grace: catch a child that dies right after answering
@@ -172,7 +227,10 @@ class Supervisor:
                 except httpx.HTTPError:
                     pass
                 if time.monotonic() >= deadline:
-                    raise BackendStartError(f"backend not healthy after {self.health_timeout}s")
+                    await _settle_stderr(proc)
+                    hint = _stderr_hint(getattr(proc, "_stderr_tail", None))
+                    raise BackendStartError(f"backend not healthy after {self.health_timeout}s"
+                                            + (f": {hint}" if hint else ""))
                 await asyncio.sleep(self.poll_interval)
 
     async def _launch(self, argv: list[str], health_url: str, mp: ManagedProcess | None = None):
