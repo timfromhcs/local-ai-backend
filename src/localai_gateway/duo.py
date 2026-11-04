@@ -8,6 +8,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import re
 import time
 from dataclasses import dataclass
@@ -21,6 +22,8 @@ PLANNER_SYSTEM = ("You are the planner. Write a numbered plan of at most 8 short
                   "Each step is one concrete action (file or command). No tools, no extra prose.")
 VERIFIER_SYSTEM = ("You are the verifier. Decide whether the executor's work is complete and correct. "
                    "If code changed and is not yet verified, call a tool to run the relevant tests or commands. "
+                   "Check every explicit constraint in the task, especially format ones (\"one word\", "
+                   "\"the number only\", \"exactly this text\"): an answer that breaks one is not verified. "
                    "When verified reply exactly 'VERIFIED: <one line>'. If something is wrong reply exactly "
                    "'FIX: <what to fix>'. Keep replies short.")
 DIGEST_SYSTEM = ("Condense the conversation so far into a brief for a stronger model (max 200 words): the goal, files "
@@ -43,6 +46,30 @@ class DuoConfig:
     fast_max_chars: int = 400
     bigout_max_tokens: int = 2000
     digest_max_tokens: int = 800
+
+    @classmethod
+    def from_env(cls, env: dict | None = None) -> "DuoConfig":
+        """Allow the roles to be pointed at other models without editing code.
+
+        Measured 2026-11-04: the 27B planner no longer fits in shared VRAM next to the fast-lane
+        server, so the only honest way to test the loop is to be able to name another planner.
+        """
+        e = os.environ if env is None else env
+        cfg = cls()
+        return cls(
+            planner=e.get("LOCALAI_DUO_PLANNER", cfg.planner),
+            executor=e.get("LOCALAI_DUO_EXECUTOR", cfg.executor),
+            verifier=e.get("LOCALAI_DUO_VERIFIER", cfg.verifier),
+            fast=e.get("LOCALAI_DUO_FAST", cfg.fast),
+            max_verify_rounds=cfg.max_verify_rounds,
+            plan_max_tokens=cfg.plan_max_tokens,
+            verify_max_tokens=cfg.verify_max_tokens,
+            state_ttl_s=cfg.state_ttl_s,
+            fast_max_chars=cfg.fast_max_chars,
+            bigout_max_tokens=cfg.bigout_max_tokens,
+            digest_max_tokens=cfg.digest_max_tokens,
+            respect_tool_checks=cfg.respect_tool_checks,
+        )
 
 
 @dataclass
@@ -272,7 +299,10 @@ class Duo:
     # ---- helpers ------------------------------------------------------------------------------
     def _final(self, st: _State, template: dict | None, note: str,
                state: str = "none", detail: str = "") -> dict:
-        content = st.answer + (f"\n\n[{note}]" if note else "")
+        # never annotate the answer text: measured on the hard suite, appending "[VERIFIED: ...]"
+        # broke an exact-format task that the executor had answered correctly. The note belongs in
+        # localai_verification.detail, where a machine consumer can read it without parsing prose.
+        content = st.answer
         resp = copy.deepcopy(template) if template else {"id": "duo", "object": "chat.completion", "choices": [
             {"index": 0, "finish_reason": "stop", "message": {"role": "assistant", "content": ""}}]}
         resp["choices"][0]["message"] = {"role": "assistant", "content": content}

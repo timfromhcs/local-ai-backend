@@ -1,0 +1,32 @@
+{
+  "at": "2026-11-04T08:44:33.402Z",
+  "model": "duo",
+  "lane": "duo",
+  "planner": "qwen3-4b",
+  "verifier": "qwen3-4b",
+  "score": 0.333,
+  "seconds": 83.6,
+  "rows": [
+    {
+      "id": "hard-routing",
+      "score": 0,
+      "seconds": 33.99,
+      "answer": "fast",
+      "error": null
+    },
+    {
+      "id": "hard-multi-step",
+      "score": 0,
+      "seconds": 35.19,
+      "answer": "1. Convert 10 minutes to seconds: 10 * 60 = 600.  \n2. Subtract startup time: 600 - 30 = 570.  \n3. Multiply decoding rate by available time: 5.9 * 570 = 3363.  \n4. Answer: 3363.",
+      "error": null
+    },
+    {
+      "id": "hard-format",
+      "score": 1,
+      "seconds": 14.34,
+      "answer": "STATUS=OK;MODE=duo;TOKENS=3363",
+      "error": null
+    }
+  ]
+}

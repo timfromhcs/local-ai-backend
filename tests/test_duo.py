@@ -213,3 +213,28 @@ async def test_verifier_fix_notifies_mode_controller_for_escalation():
     modes = StubModes(Mode.DUO)
     await Duo(f, CFG, modes=modes).chat(req())
     assert len(modes.failed) == 1
+
+def test_roles_can_be_pointed_at_other_models_via_env(monkeypatch):
+    """Measured: the 27B planner does not fit in shared VRAM, so the planner must be nameable."""
+    from localai_gateway.duo import DuoConfig
+
+    cfg = DuoConfig.from_env({"LOCALAI_DUO_PLANNER": "qwen3-4b", "LOCALAI_DUO_VERIFIER": "qwen3-4b"})
+    assert cfg.planner == "qwen3-4b"
+    assert cfg.verifier == "qwen3-4b"
+    assert cfg.executor == DuoConfig().executor, "unset roles keep their default"
+    assert cfg.respect_tool_checks is True, "other settings are preserved"
+
+
+def test_from_env_reads_the_process_environment(monkeypatch):
+    from localai_gateway.duo import DuoConfig
+
+    monkeypatch.setenv("LOCALAI_DUO_EXECUTOR", "jev-1.5b")
+    assert DuoConfig.from_env().executor == "jev-1.5b"
+
+def test_verifier_is_told_to_check_explicit_format_constraints():
+    """Measured: with a 4B planner the executor answered the method instead of the number and the
+    verifier approved it. The format rule has to be part of the verifier's job."""
+    from localai_gateway.duo import VERIFIER_SYSTEM
+
+    assert "constraint" in VERIFIER_SYSTEM.lower()
+    assert "number only" in VERIFIER_SYSTEM.lower()

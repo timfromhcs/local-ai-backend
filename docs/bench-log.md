@@ -285,6 +285,38 @@ Diagnosis is not a fix: until a smaller planner fits (or the fast-lane server yi
 runs without its planner/verifier and says so. The measured numbers in this log keep their earlier
 caveat.
 
+## 2026-11-04 - a planner that fits, and what it costs
 
+With the fast-lane server stopped, the 27B loads fine (no OOM, health reached) - so the limit is
+coexistence, not the model. It cannot share the carve-out with the 2.4 GB fast lane, which every
+`duo` request needs for routing, so on this machine the 27B is not a usable planner right now.
 
+That is why `DuoConfig.from_env()` exists: `LOCALAI_DUO_PLANNER` / `_VERIFIER` / `_EXECUTOR` / `_FAST`
+name the roles without touching code. Measured with the 4B in all three roles (no extra VRAM):
+
+| Lane | hard suite | Time |
+|---|---|---|
+| qwen3-4b alone | 0.333 | 11.7 s |
+| duo, automatic | 0.333 | 7.1 s |
+| duo forced, 4B planner + 4B verifier | **0.333** | **83.6 s** |
+
+So the loop costs ~72 s and buys nothing when the planner is the same model. The one thing it did
+improve is honest: `hard-format` now passes because the answer text is clean - the earlier 0 was our
+own bug.
+
+### Two fixes that this measurement forced
+
+1. **The answer text is no longer annotated.** `_final` appended `[VERIFIED: ...]` to the content,
+   which broke an exact-format task the executor had answered correctly (`STATUS=OK;MODE=duo;TOKENS=3363`
+   plus a bracket note fails an equality check). The note now lives only in
+   `localai_verification.detail`. Anyone parsing the old suffix gets a clean answer instead.
+2. **The verifier is told to check explicit constraints** ("one word", "number only", "exactly this
+   text"). It had approved an answer that broke the task's format because nothing in its prompt asked
+   it to look.
+
+### What is still true
+
+`duo` cannot beat the executor without a stronger planner, and the only candidate here does not fit.
+Any future claim that the loop helps must come with a planner that is actually different - otherwise
+it is the same 4B talking to itself three times. The 11.7 s vs 83.6 s row is the cost of that.
 
