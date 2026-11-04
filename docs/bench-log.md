@@ -320,3 +320,32 @@ own bug.
 Any future claim that the loop helps must come with a planner that is actually different - otherwise
 it is the same 4B talking to itself three times. The 11.7 s vs 83.6 s row is the cost of that.
 
+## 2026-11-04 - the VRAM ceiling, measured from three sides
+
+Goal: a planner that fits next to the fast lane. Answer: on this machine, none of the options do.
+
+| Attempt | Result |
+|---|---|
+| 27B, `-c 16384 -ngl 99`, fast lane running | fails: 1.06 GB allocation |
+| 27B, `-c 8192 -ngl 99`, fast lane running | fails: 1.06 GB allocation |
+| 27B, `-c 4096 -ngl 40`, fast lane running | fails: 0.90 GB allocation |
+| 27B, `-c 4096 -ngl 99`, fast lane stopped | loads and answers |
+
+The shared carve-out is simply too small for a 27B planner, a 4B executor and the 1.5B fast lane at
+once. `models.yaml` now says so in the model's own note, and the context reduction to 8k is recorded
+as what it is - a smaller KV cache that is still not enough.
+
+### The cost of a failure that repeats
+
+Because the planner is asked on every `duo` request, a non-fitting model used to cost ~14-33 s *per
+request*, each time re-spawning it, reading its stderr and failing identically. The supervisor now
+caches a failed start for 90 s and answers with the reason immediately:
+
+```
+try 1: 33.2 s  planner unavailable: ... Device memory allocation ...
+try 2:  3.2 s  (same reason, no spawn - what remains is the executor call)
+```
+
+The cache expires, so freeing VRAM (or fixing the flags) takes effect without restarting the gateway.
+That is a latency fix with a test, not a claim that the model now fits.
+

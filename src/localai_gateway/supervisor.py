@@ -192,6 +192,10 @@ class Supervisor:
         # backends we spawned, so a killed gateway's children can be reaped at the next start
         self.ledger = ledger
         self.last_pid: int | None = None
+        # measured 2026-11-04: a model that cannot fit (27B next to the fast lane) was retried on
+        # every request, costing ~14 s each and re-failing identically. Cache the reason instead.
+        self._failed_starts: dict[str, tuple[str, float]] = {}
+        self.failed_start_ttl = 90.0
 
     async def _spawn(self, argv: list[str]) -> tuple[Any, float | None]:
         kwargs: dict[str, Any] = {}
@@ -235,18 +239,41 @@ class Supervisor:
 
     async def _launch(self, argv: list[str], health_url: str, mp: ManagedProcess | None = None):
         """Spawn + wait healthy. On ANY failure (incl. cancellation) the new tree is killed."""
+        cached = self._cached_failure(self._failure_key(argv))
+        if cached is not None:
+            raise BackendStartError(f"{cached} (not retried yet; the reason is cached for "
+                                    f"{int(self.failed_start_ttl)}s)")
         proc, ctime = await self._spawn(argv)
         if mp is not None:
             mp._pending = (proc, ctime)
         try:
             await self._wait_healthy(proc, ctime, health_url)
+        except BackendStartError as exc:
+            self._failed_starts[self._failure_key(argv)] = (str(exc), self._clock())
+            await _kill_tree(proc, ctime)
+            raise
         except BaseException:
             await _kill_tree(proc, ctime)
             raise
+        else:
+            self._failed_starts.pop(self._failure_key(argv), None)
         finally:
             if mp is not None:
                 mp._pending = None
         return proc, ctime
+
+    def _failure_key(self, argv: list[str]) -> str:
+        return " ".join(argv)
+
+    def _cached_failure(self, key: str) -> str | None:
+        hit = self._failed_starts.get(key)
+        if hit is None:
+            return None
+        reason, at = hit
+        if self._clock() - at > self.failed_start_ttl:
+            self._failed_starts.pop(key, None)
+            return None
+        return reason
 
     async def start(self, spec: Any, argv: list[str], port: int, health_url: str) -> ManagedProcess:
         self.last_pid = None
