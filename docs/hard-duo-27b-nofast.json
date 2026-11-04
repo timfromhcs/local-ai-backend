@@ -1,0 +1,31 @@
+﻿{
+    "at":  "2026-11-04T12:03:52.6770568+01:00",
+    "lane":  "duo",
+    "planner":  "bonsai-27b",
+    "fast_lane":  "stopped",
+    "score":  0.667,
+    "seconds":  381,
+    "rows":  [
+                 {
+                     "id":  "hard-routing",
+                     "score":  1.0,
+                     "seconds":  258.97,
+                     "answer":  "bigout",
+                     "error":  null
+                 },
+                 {
+                     "id":  "hard-multi-step",
+                     "score":  0.0,
+                     "seconds":  117.79,
+                     "answer":  "To calculate the number of tokens produced in 10 minutes, we need to account for both the startup time and the token decoding rate.\n\n- 10 minutes = 600 seconds\n- 30 seconds of startup time\n- Remaining time for token decoding = 600 - 30 = 57",
+                     "error":  null
+                 },
+                 {
+                     "id":  "hard-format",
+                     "score":  1.0,
+                     "seconds":  4.15,
+                     "answer":  "STATUS=OK;MODE=duo;TOKENS=3363",
+                     "error":  null
+                 }
+             ]
+}

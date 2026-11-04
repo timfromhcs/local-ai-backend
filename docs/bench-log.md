@@ -349,3 +349,31 @@ try 2:  3.2 s  (same reason, no spawn - what remains is the executor call)
 The cache expires, so freeing VRAM (or fixing the flags) takes effect without restarting the gateway.
 That is a latency fix with a test, not a claim that the model now fits.
 
+## 2026-11-04 - the loop finally earns its cost: 0.333 -> 0.667 with the 27B planner
+
+The missing measurement, taken by stopping the fast lane so the 27B fits
+(`scripts/planner-session.ps1 -Start`, artifact `docs/hard-duo-27b-nofast.json`):
+
+| Lane | hard suite | Time | Detail |
+|---|---|---|---|
+| qwen3-4b alone | 0.333 | 11.7 s | routing wrong, arithmetic explained, format exact |
+| duo, 4B planner + 4B verifier | 0.333 | 83.6 s | same answers, ~72 s extra |
+| duo, **27B planner + 27B verifier** | **0.667** | **381 s** | routing now correct (`bigout`), format exact, arithmetic still explained |
+
+`hard-routing` is the task that flips: with the 4B answering alone it says `fast`; with a plan from
+the 27B in front of it, the same 4B says `bigout` - the right answer. That is the first measured case
+where the loop buys accuracy rather than latency, and it is exactly the shape predicted earlier: it
+helps where the executor lacks a decision, not where it lacks knowledge.
+
+`hard-multi-step` still fails for both: the model writes the method and never states the number, and
+the strict scorer does not accept prose. That is a format failure, not a reasoning success, and it
+stays scored 0.
+
+### The price, stated plainly
+
+381 s for three tasks, against 11.7 s for the 4B alone - and while the session runs there is **no fast
+lane and no automatic mode routing** (the controller's Jev server is the thing that had to go). So
+this configuration is for deliberate deep work, invoked explicitly, not the default. The script
+`scripts/planner-session.ps1 -Start|-Stop|-Status` makes the trade reversible in one command, and
+`-Stop` restores the fast lane and the default role assignment.
+
