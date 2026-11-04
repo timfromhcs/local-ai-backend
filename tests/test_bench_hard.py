@@ -12,11 +12,13 @@ def test_word_scorer_requires_exactly_one_word():
     assert score("fast") == 0.0
 
 
-def test_multi_step_task_needs_the_number_not_the_working():
+def test_multi_step_task_scores_the_value_even_when_it_shows_the_work():
     task = next(t for t in HARD_TASKS if t.id == "hard-multi-step")
     assert task.score("3363") == 1.0
     assert task.score("3363 tokens") == 1.0
-    # the 4B explained the arithmetic instead; that must not pass
+    # a numbered list used to score 0 because only the first number was read
+    assert task.score("1. 10 minutes = 600 s\n2. minus 30 s startup = 570 s\n3. 5.9 * 570 = 3363") == 1.0
+    # reasoning without the result is still not an answer
     assert task.score("First convert 10 minutes to 600 seconds, then multiply by 5.9") == 0.0
     assert task.score("3540") == 0.0, "ignoring the 30 s startup must fail"
 

@@ -377,3 +377,30 @@ this configuration is for deliberate deep work, invoked explicitly, not the defa
 `scripts/planner-session.ps1 -Start|-Stop|-Status` makes the trade reversible in one command, and
 `-Stop` restores the fast lane and the default role assignment.
 
+## 2026-11-04 (later) - correction: the 0.667 was the scorer, not the planner
+
+The previous section reported duo with the 27B planner at 0.667 vs 0.333 for the 4B alone. That
+comparison is wrong, and the reason matters more than the number.
+
+`score_number` read only the **first** number in an answer. So `1. 600 s  2. 570 s  3. 3363` scored 0
+even though the value was right - a *formatting* failure counted as a *reasoning* failure. Fixing it
+made `hard-multi-step` a value test (a wrong value such as 3540 still scores 0, `hard-format` still
+covers exactness), and with a fair scorer the picture is:
+
+| Lane | hard suite | Time | Note |
+|---|---|---|---|
+| qwen3-4b alone | **0.667** | 16 s | routing wrong, value right, format exact |
+| duo, 27B planner, run 1 | 0.667 | 381 s | routing right, value wrong, format exact |
+| duo, 27B planner, run 2 | 0.667 | 108 s | routing wrong, value right, format exact |
+
+The totals agree; the composition does not. `hard-routing` is flaky in both directions (the 27B plan
+flipped it to `bigout` once, then back to `fast`), and with n=1 per lane that is not evidence of
+anything. What the numbers do support: **the loop still buys no accuracy on this suite and costs
+7-24x the time.** The earlier "first positive loop result" was an artifact of my own scorer change,
+and it is withdrawn here rather than left standing in the log.
+
+What survives is the useful part: the suite now separates "got the value" from "obeyed the format",
+which is what it claimed to measure all along. A routing task that a 4B answers correctly one run and
+wrongly the next needs repetition before it can be used as evidence for anything - that is the next
+open item.
+

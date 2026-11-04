@@ -1,0 +1,36 @@
+﻿{
+    "at":  "2026-11-04T12:52:41.7972901+01:00",
+    "rows":  [
+                 {
+                     "id":  "hard-routing",
+                     "category":  "routing",
+                     "weight":  1.0,
+                     "score":  0.0,
+                     "seconds":  0.51,
+                     "answer":  "fast",
+                     "error":  null
+                 },
+                 {
+                     "id":  "hard-multi-step",
+                     "category":  "reasoning",
+                     "weight":  1.0,
+                     "score":  1.0,
+                     "seconds":  13.88,
+                     "answer":  "We are given the following information:\n\n- The model decodes **5.9 tokens per second**.\n- There is a **30-second startup** before the first token.\n- We are to find how many tokens are produced in **exactly 10 minutes**.\n\n---\n\n### Step 1: Convert 10 minutes to seconds\n\n$$\n10 \\text{ minutes} = 10 \\times 60 = 600 \\text{ seconds}\n$$\n\n---\n\n### Step 2: Subtract the startup time\n\nThe model is not decoding during the 30-second startup. So, the actual decoding time is:\n\n$$\n600 - 30 = 570 \\text{ seconds}\n$$\n\n---\n\n### Step 3: Calculate the number of tokens decoded in 570 seconds\n\n$$\n\\text{Tokens} = 5.9 \\",
+                     "error":  null
+                 },
+                 {
+                     "id":  "hard-format",
+                     "category":  "format",
+                     "weight":  1.0,
+                     "score":  1.0,
+                     "seconds":  1.28,
+                     "answer":  "STATUS=OK;MODE=duo;TOKENS=3363",
+                     "error":  null
+                 }
+             ],
+    "lane":  "model",
+    "score":  0.667,
+    "model":  "qwen3-4b",
+    "seconds":  16
+}

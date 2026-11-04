@@ -1,0 +1,31 @@
+﻿{
+    "at":  "2026-11-04T12:51:25.7781723+01:00",
+    "rows":  [
+                 {
+                     "id":  "hard-routing",
+                     "score":  0.0,
+                     "seconds":  90.76,
+                     "answer":  "fast",
+                     "error":  null
+                 },
+                 {
+                     "id":  "hard-multi-step",
+                     "score":  1.0,
+                     "seconds":  15.21,
+                     "answer":  "We are given the following information:\n\n- The model decodes **5.9 tokens per second**.\n- There is a **30-second startup** before the first token.\n- We are to find how many tokens are produced in **exactly 10 minutes**.\n\n---\n\n### Step 1: Convert 10 minutes to ",
+                     "error":  null
+                 },
+                 {
+                     "id":  "hard-format",
+                     "score":  1.0,
+                     "seconds":  1.64,
+                     "answer":  "STATUS=OK;MODE=duo;TOKENS=3363",
+                     "error":  null
+                 }
+             ],
+    "seconds":  108,
+    "lane":  "duo",
+    "planner":  "bonsai-27b",
+    "fast_lane":  "stopped",
+    "score":  0.667
+}

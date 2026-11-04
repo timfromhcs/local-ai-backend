@@ -36,13 +36,21 @@ def score_json(answer: str) -> float:
 
 
 def score_number(answer: str, want: float) -> float:
-    nums = re.findall(r"-?\d+(?:\.\d+)?", answer.replace(".", "").replace(",", ""))
-    if not nums:
-        return 0.0
-    try:
-        return 1.0 if abs(float(nums[0]) - want) <= max(1.0, want * 0.01) else 0.0
-    except ValueError:
-        return 0.0
+    """1.0 when the expected value appears anywhere in the answer.
+
+    It used to read only the *first* number, which meant a numbered list ("1. Convert ... 2. ...")
+    scored 0 even when the final value was right - that measured formatting while pretending to
+    measure reasoning, and `hard-format` already covers formatting. Every number in the text is
+    compared now; a wrong value (e.g. ignoring the 30 s startup -> 3540) still scores 0.
+    """
+    nums = re.findall(r"-?\d+(?:\.\d+)?", answer.replace(",", ""))
+    for raw in nums:
+        try:
+            if abs(float(raw) - want) <= max(1.0, want * 0.01):
+                return 1.0
+        except ValueError:
+            continue
+    return 0.0
 
 
 def score_starts_no(answer: str) -> float:
@@ -138,7 +146,7 @@ HARD_TASKS: tuple[BenchTask, ...] = (
     BenchTask(
         "hard-multi-step",
         "A model decodes 5.9 tokens per second. There is a 30 second startup before the first token. "
-        "How many tokens does it produce in exactly 10 minutes? Answer with the number only.",
+        "How many tokens does it produce in exactly 10 minutes? Show your steps and end with the number.",
         1.0,
         lambda a: score_number(a, 3363),
         "reasoning",
