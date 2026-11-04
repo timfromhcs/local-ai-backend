@@ -1,0 +1,55 @@
+{
+  "at": "2026-11-04T12:47:31.895Z",
+  "task": "hard-routing",
+  "model": "duo",
+  "mode": "duo",
+  "runs": 6,
+  "passes": 0,
+  "rate": 0,
+  "rows": [
+    {
+      "run": 1,
+      "score": null,
+      "error": "TypeError: fetch failed",
+      "wall": 305.7
+    },
+    {
+      "run": 2,
+      "score": null,
+      "error": "TypeError: fetch failed",
+      "wall": 307.7
+    },
+    {
+      "run": 3,
+      "score": 0,
+      "seconds": 95.06,
+      "answer": "fast",
+      "error": null,
+      "wall": 95.2
+    },
+    {
+      "run": 4,
+      "score": 0,
+      "seconds": 0.96,
+      "answer": "fast",
+      "error": null,
+      "wall": 1
+    },
+    {
+      "run": 5,
+      "score": 0,
+      "seconds": 0.8,
+      "answer": "fast",
+      "error": null,
+      "wall": 0.8
+    },
+    {
+      "run": 6,
+      "score": 0,
+      "seconds": 0.82,
+      "answer": "fast",
+      "error": null,
+      "wall": 0.8
+    }
+  ]
+}
