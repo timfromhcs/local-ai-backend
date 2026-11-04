@@ -404,3 +404,25 @@ which is what it claimed to measure all along. A routing task that a 4B answers 
 wrongly the next needs repetition before it can be used as evidence for anything - that is the next
 open item.
 
+## 2026-11-04 - repetition: hard-routing stays unsolved (0/8 and 0/6)
+
+The single "bigout" answer that briefly looked like the loop working did not reproduce. Same task,
+same temperature 0, repeated (`scripts/repeat-task.mjs`, artifacts `docs/repeat-hard-routing-*.json`):
+
+| Lane | Passes | Detail |
+|---|---|---|
+| qwen3-4b alone | **0/8** | every run `fast`, 0.7 s each - deterministic, not flaky |
+| duo, 27B planner, forced | **0/6** | four runs `fast`; two requests aborted after ~305 s with backend 500s |
+
+So my earlier reading ("routing flipped to `bigout` because of the plan") was a single observation
+that does not survive repetition. The honest state: **neither lane solves this task.** The 4B is
+consistent and wrong; the 27B loop is occasionally wrong differently, sometimes not answering at all.
+
+The two aborted requests are a separate reliability finding: the backend on :18100 returned
+`HTTP 500` repeatedly and the client gave up after five minutes. That is not a scored failure - it is
+the 27B configuration being unstable under repeated load - and it is recorded here instead of being
+quietly dropped from the denominator.
+
+Repetition costs little for the 4B (8 runs in 6 s) and a lot for duo (one run can be 300 s), which is
+itself the answer to "should this be the default": no.
+

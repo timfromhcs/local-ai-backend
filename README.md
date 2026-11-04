@@ -227,6 +227,7 @@ What the numbers actually say (`docs/bench-log.md`, measured on this laptop):
 | `hard` (3 tasks) | 0.333 | 0.333 in 5.3 s | **0.333** in 18.5 s |
 | `code` (2 tasks, tests must pass) | 1.0 in ~51 s | - | **1.0** in ~66 s |
 | `hard`, 27B planner (`scripts/planner-session.ps1 -Start`) | 0.667 in 16 s | - | 0.667 in 108-381 s |
+| `hard-routing` repeated (n=8 / n=6) | **0/8** | - | **0/6** (2 requests aborted) |
 
 The `hard` rows are the honest ones: with a fair scorer both lanes tie at 0.667, and the loop
 costs 7-24x the time. An earlier 0.667-vs-0.333 result was withdrawn - it came from a scorer that
