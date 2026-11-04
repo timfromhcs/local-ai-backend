@@ -226,6 +226,7 @@ What the numbers actually say (`docs/bench-log.md`, measured on this laptop):
 | `tools` (2 tasks) | 1.0 (178 s cold) | 1.0 in 3.7 s | 1.0 in 30.1 s |
 | `hard` (3 tasks) | 0.333 | 0.333 in 5.3 s | **0.333** in 18.5 s |
 | `code` (2 tasks, tests must pass) | 1.0 in ~51 s | - | **1.0** in ~66 s |
+| `hard`, 27B planner (`scripts/planner-session.ps1 -Start`) | 0.333 in 11.7 s | - | **0.667** in 381 s |
 
 The second row is the honest one: the plan/execute/verify loop runs and costs time, but it does
 **not** repair a capability gap. A plan cannot add knowledge the executor lacks, and a verifier
