@@ -301,14 +301,30 @@ class Supervisor:
             await asyncio.sleep(self.poll_interval)
 
     async def _watch(self, mp: ManagedProcess) -> None:
-        try:
-            await self._watch_inner(mp)
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:  # spawn OSError etc.
-            mp.failed = True
-            mp.error = repr(e)
-            log.error("supervisor watcher for port %s failed: %r", mp.port, e)
+        """Keep watching, but never mark a live backend as failed.
+
+        Measured 2026-11-05: the watcher raised FileNotFoundError(2) from a lost Windows handle while
+        the backend was answering /health, marked it failed, and every later request said
+        "backend unreachable". A lost handle is not a dead process; check and carry on.
+        """
+        while not mp.stopped:
+            try:
+                await self._watch_inner(mp)
+                return
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:  # spawn OSError, lost handle, ...
+                if mp.stopped:
+                    return
+                if _alive(mp._proc, mp._ctime):
+                    log.warning("supervisor watcher for port %s hit %r but the backend is alive; "
+                                "continuing", mp.port, e)
+                    await asyncio.sleep(max(self.poll_interval, 0.5))
+                    continue
+                mp.failed = True
+                mp.error = repr(e)
+                log.error("supervisor watcher for port %s failed: %r", mp.port, e)
+                return
 
     async def _watch_inner(self, mp: ManagedProcess) -> None:
         attempts = 0

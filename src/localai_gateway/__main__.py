@@ -14,6 +14,7 @@ from .config import PROJECT_ROOT, Settings, config_file
 from .doctor import render, report
 from .orphans import ledger_path, reap
 from .registry import load_registry
+from .runtime import ensure_runtime
 from .scheduler import Scheduler
 from .supervisor import Supervisor
 from .warmup import Warmer, make_hook
@@ -26,6 +27,14 @@ def build_app(settings: Settings | None = None):
     if os.environ.get("LOCALAI_PORT"):
         settings.port = int(os.environ["LOCALAI_PORT"])
     settings.cache_dir.mkdir(parents=True, exist_ok=True)
+    # the launcher has gone missing twice on this machine; restore it from the shipped zip instead
+    # of failing every request with a 90 s timeout
+    runtime_path, runtime_note = ensure_runtime(settings.llama_path(), settings.llama_zip,
+                                                fallback=settings.cache_dir.parent / "runtime")
+    if runtime_path != settings.llama_path():
+        settings.llama_server = runtime_path  # the rest of the app uses the resolved path
+    if runtime_note:
+        log.warning("runtime: %s", runtime_note)
     registry = load_registry(config_file("models.yaml"), settings.model_dir)
     prefix_file = settings.cache_dir.parent / "opencode_prefix.json"
 

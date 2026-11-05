@@ -96,7 +96,8 @@ def render(r: DoctorReport) -> str:
         f"  ram             : {r.ram_total_gb} GB total, budget {r.budget_mb} MB",
         f"  cpu             : {r.cpu_physical} cores / {r.cpu_threads} threads",
         f"  platform        : {r.platform}",
-        f"  llama-server    : {r.llama_server} {'found' if Path(r.llama_server).exists() else 'MISSING'}",
+        f"  llama-server    : {r.llama_server} {'found' if Path(r.llama_server).exists() else 'MISSING'}"
+        + (f" (restorable from {settings.llama_zip.name})" if not Path(r.llama_server).exists() and settings.llama_zip else ""),
         f"  sd-server       : {r.sd_server} {'found' if Path(r.sd_server).exists() else 'MISSING'}",
         "  models:",
     ]
