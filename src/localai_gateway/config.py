@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 
 import psutil
+
+from .runtime import default_zip
 from pydantic import BaseModel
 
 
@@ -54,6 +56,7 @@ class Settings(BaseModel):
     port: int = 8090  # 8080 belongs to the Jev server
     cache_dir: Path = PROJECT_ROOT / "cache" / "slots"  # SSD: llama-server slot states (precomputed OpenCode prefix)
     llama_server: Path | None = None  # LOCALAI_LLAMA_SERVER: use a runtime from elsewhere (e.g. a shared Vulkan build)
+    llama_zip: Path | None = None     # LOCALAI_LLAMA_ZIP: archive to restore the launcher from (auto-detected otherwise)
     sd_server: Path | None = None      # LOCALAI_SD_SERVER
 
     def llama_path(self) -> Path:
@@ -71,4 +74,5 @@ class Settings(BaseModel):
             model_dir=PROJECT_ROOT,
             llama_server=Path(os.environ["LOCALAI_LLAMA_SERVER"]) if os.environ.get("LOCALAI_LLAMA_SERVER") else None,
             sd_server=Path(os.environ["LOCALAI_SD_SERVER"]) if os.environ.get("LOCALAI_SD_SERVER") else None,
+            llama_zip=Path(os.environ["LOCALAI_LLAMA_ZIP"]) if os.environ.get("LOCALAI_LLAMA_ZIP") else default_zip(PROJECT_ROOT),
         )

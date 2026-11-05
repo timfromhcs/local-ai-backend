@@ -426,3 +426,33 @@ quietly dropped from the denominator.
 Repetition costs little for the 4B (8 runs in 6 s) and a lot for duo (one run can be 300 s), which is
 itself the answer to "should this be the default": no.
 
+## 2026-11-05 - the runtime launcher keeps vanishing; the gateway now heals itself
+
+`bin/llama/llama-server.exe` disappeared for the second time (46 sibling binaries stayed). Ruled out:
+Defender (service not running), git (`bin/` is ignored), and the extraction code (it worked before).
+Attempting to write the file back gives:
+
+```
+PermissionError: [Errno 13] Permission denied: 'C:\LocalAIBACKEND\bin\llama\llama-server.exe'
+```
+
+while every other file in that directory is writable. Something outside the repository guards that
+exact path, so the cause stays unknown - what is fixable is the consequence: a missing launcher used to
+cost a 90 s start timeout and a 503 that mentioned a tokenizer warning.
+
+`runtime.ensure_runtime()` now restores the runtime from the shipped zip, and when the primary path is
+blocked it extracts into `cache/runtime/` and reports where it landed. Verified live: the gateway
+logged `using C:\LocalAIBACKEND\cache\runtime\llama-server.exe instead` and a real
+`qwen3-4b` completion answered `OK`.
+
+### And a watcher bug the restore exposed
+
+The first request after the restore returned `backend unreachable` although `/health` was 200 and the
+log said `supervisor watcher for port 18100 failed: FileNotFoundError(2, ...)`. Same lost-handle class
+as the earlier fix, but in the outer watcher, which marked a live backend as failed. The watcher now
+checks liveness before believing the exception and resumes; a test covers the exact sequence
+(raise once, then continue).
+
+Still open, unchanged: duo with the 27B planner is not stable on this machine (repeated 500s, one
+executor start that exited with code 0 before health). Nothing in this cycle claims otherwise.
+
